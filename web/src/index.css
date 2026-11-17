@@ -1,0 +1,416 @@
+@import 'tailwindcss';
+
+@import '@fontsource-variable/bricolage-grotesque/index.css';
+@import '@fontsource-variable/inter/index.css';
+@import '@fontsource-variable/jetbrains-mono/index.css';
+/* Jediné psané písmo na webu — podpis na kontaktní stránce. */
+@import '@fontsource/parisienne/400.css';
+
+/* Téma se řídí atributem na <html>, ne jen systémovým nastavením. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/* ---------------------------------------------------------------------------
+   Barevné tokeny
+   Světlý režim = "ateliér": teplá kostěná, hodně bílého prostoru.
+   Tmavý režim  = "laboratoř": hluboká inkoustová, svítící akcenty.
+   --------------------------------------------------------------------------- */
+:root {
+  --bg: #faf8f3;
+  --bg-sunk: #f2efe7;
+  --surface: #ffffff;
+  --surface-2: #faf8f3;
+  --line: #e3ded2;
+  --line-strong: #cec7b6;
+  --text: #16161a;
+  --text-soft: #4a4a52;
+  --muted: #76767f;
+
+  --accent: #9ee000;
+  --accent-bright: #ccff4d;
+  --accent-ink: #0b1400;
+  --violet: #5b3ce6;
+  --violet-soft: #ede8ff;
+  --coral: #ff5c38;
+  --coral-soft: #ffe8e2;
+
+  --ok: #119a63;
+  --warn: #b8740a;
+
+  --glass: rgb(255 255 255 / 0.72);
+  --glass-line: rgb(0 0 0 / 0.08);
+  --shadow-soft: 0 1px 2px rgb(22 22 26 / 0.05), 0 8px 24px -12px rgb(22 22 26 / 0.14);
+  --shadow-lift: 0 2px 4px rgb(22 22 26 / 0.06), 0 24px 48px -20px rgb(22 22 26 / 0.26);
+  --grid-line: rgb(22 22 26 / 0.045);
+  --trace: rgb(22 22 26 / 0.1);
+}
+
+[data-theme='dark'] {
+  --bg: #08080b;
+  --bg-sunk: #050507;
+  --surface: #101014;
+  --surface-2: #16161c;
+  --line: #24242d;
+  --line-strong: #35353f;
+  --text: #ededf1;
+  --text-soft: #b6b6c0;
+  --muted: #8a8a96;
+
+  --accent: #ccff4d;
+  --accent-bright: #e2ff8f;
+  --accent-ink: #0b1400;
+  --violet: #8f74ff;
+  --violet-soft: #1b1736;
+  --coral: #ff7a5c;
+  --coral-soft: #2a140f;
+
+  --ok: #3ddc91;
+  --warn: #ffc457;
+
+  --glass: rgb(16 16 20 / 0.72);
+  --glass-line: rgb(255 255 255 / 0.08);
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 24px -12px rgb(0 0 0 / 0.7);
+  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.5), 0 28px 56px -20px rgb(0 0 0 / 0.85);
+  --grid-line: rgb(255 255 255 / 0.04);
+  --trace: rgb(255 255 255 / 0.08);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-sunk: var(--bg-sunk);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-text: var(--text);
+  --color-text-soft: var(--text-soft);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-bright: var(--accent-bright);
+  --color-accent-ink: var(--accent-ink);
+  --color-violet: var(--violet);
+  --color-violet-soft: var(--violet-soft);
+  --color-coral: var(--coral);
+  --color-coral-soft: var(--coral-soft);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-glass: var(--glass);
+
+  --font-display: 'Bricolage Grotesque Variable', 'Inter Variable', ui-sans-serif, system-ui,
+    sans-serif;
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SFMono-Regular', monospace;
+
+  --shadow-soft: var(--shadow-soft);
+  --shadow-lift: var(--shadow-lift);
+
+  --radius-card: 1.125rem;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ---------------------------------------------------------------------------
+   Základ
+   --------------------------------------------------------------------------- */
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv05' 1, 'ss03' 1;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: clip;
+    transition: background-color 0.5s var(--ease-out-expo), color 0.35s var(--ease-out-expo);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  /* Vlastní scrollbar — drobnost, kterou si člověk nepojmenuje */
+  ::-webkit-scrollbar {
+    width: 11px;
+    height: 11px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--bg-sunk);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border: 3px solid var(--bg-sunk);
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--muted);
+  }
+
+  /* Kurzor schováme jen tam, kde ho nahrazuje vlastní. */
+  html[data-cursor='custom'] body,
+  html[data-cursor='custom'] a,
+  html[data-cursor='custom'] button,
+  html[data-cursor='custom'] [role='button'] {
+    cursor: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Opakující se vzory
+   --------------------------------------------------------------------------- */
+@layer components {
+  /* Technická mřížka — "mám ráda pořádek" přeloženo do pozadí */
+  .grid-paper {
+    background-image: linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+
+  .grid-paper-fine {
+    background-image: linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+    background-size: 16px 16px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .glass {
+    background: var(--glass);
+    backdrop-filter: blur(18px) saturate(1.6);
+    -webkit-backdrop-filter: blur(18px) saturate(1.6);
+    border: 1px solid var(--glass-line);
+  }
+
+  /* Technický mikro-label: 02 / WORKFLOW */
+  .label-mono {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* Podtržení, které se vykreslí při hoveru */
+  .link-underline {
+    position: relative;
+    display: inline-block;
+  }
+  .link-underline::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -2px;
+    height: 1.5px;
+    width: 100%;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s var(--ease-out-expo);
+  }
+  .link-underline:hover::after,
+  .link-underline:focus-visible::after {
+    transform: scaleX(1);
+  }
+
+  /* Text s akcentním zvýrazňovačem */
+  .marker {
+    background: linear-gradient(to top, var(--accent) 0%, var(--accent) 38%, transparent 38%);
+    padding: 0 0.1em;
+    box-decoration-break: clone;
+  }
+
+  .noise::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.4;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Utility
+   --------------------------------------------------------------------------- */
+@utility text-balance {
+  text-wrap: balance;
+}
+
+@utility hide-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Animace */
+@keyframes abl-pulse-ring {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+}
+
+@keyframes abl-dash {
+  to {
+    stroke-dashoffset: -1000;
+  }
+}
+
+@keyframes abl-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes abl-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+@keyframes abl-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-dash {
+  stroke-dasharray: 6 8;
+  animation: abl-dash 24s linear infinite;
+}
+
+.animate-float {
+  animation: abl-float 5s ease-in-out infinite;
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--line) 50%, transparent);
+  animation: abl-shimmer 1.6s infinite;
+}
+
+.caret::after {
+  content: '';
+  display: inline-block;
+  width: 0.08em;
+  height: 1em;
+  margin-left: 0.08em;
+  background: var(--accent);
+  vertical-align: -0.12em;
+  animation: abl-blink 1.1s step-end infinite;
+}
+
+/* ---------------------------------------------------------------------------
+   OMEZENÍ POHYBU — pravidlo platné pro celý web
+
+   Pohyb se zastaví ve dvou případech:
+     1. uživatel má v systému zapnuté „omezit pohyb“ (prefers-reduced-motion)
+     2. vypnul si animace přepínačem v hlavičce (html[data-motion="reduced"])
+
+   Obojí vede na stejnou deklaraci níž, takže na nic nelze zapomenout —
+   i nově přidaná animace je pokrytá, aniž by se o ni kdokoliv staral.
+
+   Pozor: tohle vypíná CSS. Animace řízené JavaScriptem (framer-motion,
+   intervaly, canvas) musí navíc sáhnout po `useReducedMotion()` z lib/prefs.jsx,
+   jinak poběží dál. Totéž platí pro `scrollTo({ behavior: 'smooth' })`.
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+}
+
+html[data-motion='reduced'] {
+  scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+    /* zastaví i plynulé přechody mezi stránkami a paralaxu */
+    view-transition-name: none !important;
+  }
+}
+
+html[data-motion='reduced'] *,
+html[data-motion='reduced'] *::before,
+html[data-motion='reduced'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  transition-delay: 0ms !important;
+  scroll-behavior: auto !important;
+  view-transition-name: none !important;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

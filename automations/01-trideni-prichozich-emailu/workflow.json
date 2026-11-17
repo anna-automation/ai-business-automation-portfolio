@@ -1,0 +1,323 @@
+{
+  "name": "Třídění příchozích e-mailů",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 5,
+              "unit": "minutes"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "readStatus": "unread",
+          "labelIds": ["INBOX"]
+        },
+        "options": {
+          "downloadAttachments": false
+        }
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000101",
+      "name": "Nová zpráva",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [-240, 300],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PLACEHOLDER",
+          "name": "Gmail — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Vytáhne ze zprávy jen to, co potřebuje AI, a označí automatické odpovědi.\nconst vystup = [];\n\nfor (const item of $input.all()) {\n  const h = item.json.headers ?? {};\n  const predmet = item.json.subject ?? '';\n\n  // Záměrně zkrácené tělo: delší zprávy nesou citovanou historii, která\n  // ke klasifikaci nic nepřidá a jen rozšiřuje data poslaná třetí straně.\n  const telo = String(item.json.text ?? item.json.snippet ?? '').slice(0, 2000);\n\n  // Hlavičky, kterými se značí automaty (out-of-office, potvrzenky, newslettery).\n  const jeAutomat =\n    (typeof h['auto-submitted'] === 'string' && h['auto-submitted'] !== 'no') ||\n    Boolean(h['x-autoreply'] || h['x-autorespond'] || h['list-unsubscribe']) ||\n    /^(automaticka|automatická|out of office|mimo kancel)/i.test(predmet);\n\n  vystup.push({\n    json: {\n      id: item.json.id,\n      threadId: item.json.threadId,\n      odesilatel: item.json.from?.value?.[0]?.address ?? '',\n      predmet,\n      jeAutomat,\n      textProAI: 'Od: ' + (item.json.from?.text ?? '') + '\\nPředmět: ' + predmet + '\\n\\n' + telo\n    }\n  });\n}\n\nreturn vystup;"
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000102",
+      "name": "Příprava textu",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-20, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-0001-automat",
+              "leftValue": "={{ $json.jeAutomat }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000103",
+      "name": "Je to automatická odpověď?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {},
+      "id": "a1b2c3d4-0001-4000-8000-000000000104",
+      "name": "Konec — smyčka",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [420, 460]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-opus-5",
+          "cachedResultName": "Claude Opus 5"
+        },
+        "options": {
+          "maxTokensToSample": 1024
+        }
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000105",
+      "name": "Jazykový model Claude",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [740, 640],
+      "credentials": {
+        "anthropicApi": {
+          "id": "PLACEHOLDER",
+          "name": "Anthropic — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.textProAI }}",
+        "schemaType": "manual",
+        "inputSchema": "{\"type\":\"object\",\"properties\":{\"kategorie\":{\"type\":\"string\",\"enum\":[\"poptavka\",\"faktura\",\"reklamace\",\"interni\",\"spam\"]},\"priorita\":{\"type\":\"string\",\"enum\":[\"vysoka\",\"bezna\",\"nizka\"]},\"spolehlivost\":{\"type\":\"number\"},\"duvod\":{\"type\":\"string\"}},\"required\":[\"kategorie\",\"priorita\",\"spolehlivost\",\"duvod\"]}",
+        "options": {
+          "systemPromptTemplate": "Jsi asistent, který třídí příchozí e-maily v české firmě. Dostaneš odesílatele, předmět a začátek textu zprávy. Vrať klasifikaci podle schématu, nic jiného.\n\nKATEGORIE — vyber právě jednu:\n- poptavka: někdo se zajímá o službu nebo produkt, chce cenu, termín, schůzku nebo prohlídku.\n- faktura: faktura, upomínka, výzva k zaplacení, potvrzení platby, daňový doklad.\n- reklamace: stížnost, vada, nefunkční dodávka, vrácení peněz, nespokojenost s již proběhlou zakázkou.\n- interni: zpráva od kolegy nebo z vlastní domény, interní provoz, dovolené, porady, systémová hlášení.\n- spam: nevyžádaná nabídka, hromadný marketing, podvod, phishing, nabídka SEO nebo backlinků.\n\nPRIORITA:\n- vysoka: hrozí finanční nebo právní následek, blíží se termín, zákazník je naštvaný, jde o novou poptávku s konkrétním rozpočtem.\n- bezna: běžný provozní obsah, který se vyřídí do dvou dnů.\n- nizka: na vědomí, archiv, spam.\n\nSPOLEHLIVOST je číslo 0–1. Udej, nakolik si jsi klasifikací jistý. Buď přísný: pokud zpráva míchá dvě kategorie, nedává smysl, je v jazyce, který neumíš posoudit, nebo je příliš krátká, dej hodnotu nejvýš 0,6. Nenadhodnocuj — zprávy s nízkou spolehlivostí jdou ke kontrole člověku, což je správný a očekávaný výsledek.\n\nDUVOD je jedna krátká česká věta s tím, co tě k zařazení vedlo. Cituj konkrétní slova ze zprávy.\n\nNikdy nehádej jméno, částku ani termín, které ve zprávě nejsou."
+        }
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000106",
+      "name": "Klasifikace AI",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.1,
+      "position": [420, 160]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-0001-spolehlivost",
+              "leftValue": "={{ $json.output.spolehlivost }}",
+              "rightValue": 0.75,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000107",
+      "name": "Spolehlivá klasifikace?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [640, 160]
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Příprava textu').item.json.id }}",
+        "labelIds": ["LABEL_ID_KATEGORIE", "LABEL_ID_PRIORITA"]
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000108",
+      "name": "Štítek a priorita",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [860, 40],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PLACEHOLDER",
+          "name": "Gmail — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Příprava textu').item.json.id }}",
+        "labelIds": ["LABEL_ID_KE_KONTROLE"]
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000109",
+      "name": "Ke kontrole člověku",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [860, 320],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PLACEHOLDER",
+          "name": "Gmail — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Napiš návrh odpovědi na tento e-mail.\n\nKATEGORIE: {{ $('Klasifikace AI').item.json.output.kategorie }}\nPRIORITA: {{ $('Klasifikace AI').item.json.output.priorita }}\n\nE-MAIL:\n{{ $('Příprava textu').item.json.textProAI }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Píšeš návrhy odpovědí za českou firmu. Výsledek čte člověk, který ho před odesláním zkontroluje a doplní — piš tak, aby mu stačilo doplnit konkrétní čísla.\n\nFIRMNÍ TÓN — PŘEPIŠTE SI PODLE SEBE:\n- Firma: NAZEV_FIRMY, obor: CO_DELATE.\n- Oslovení: Dobrý den, pane / paní PŘÍJMENÍ. Když příjmení neznáš, napiš jen Dobrý den.\n- Vykáme. Žádné emoji, žádné superlativy, žádné vykřičníky.\n- Podpis: JMENO, NAZEV_FIRMY, TELEFON.\n\nPRAVIDLA:\n1. Odpověz česky, nejvýš pět vět plus podpis.\n2. Nikdy neslibuj cenu, termín ani dostupnost, které nejsou ve vstupní zprávě. Místo toho napiš, že kolega potvrdí do konkrétní doby (jeden pracovní den).\n3. Kde má člověk doplnit údaj, napiš hranatou značku, například [CENA] nebo [TERMÍN]. Nehádej.\n4. U poptávky: potvrď přijetí, zrekapituluj jednou větou, o co jde, a zmiň další krok.\n5. U faktury: potvrď přijetí a napiš, že doklad jde do zpracování. Nepotvrzuj, že bude zaplacen.\n6. U reklamace: neomlouvej se za vinu, kterou neznáš. Potvrď, že to bereme vážně, a napiš, co bude dál a do kdy.\n7. Nepiš nic o tom, že text vznikl pomocí AI.\n\nVrať pouze text odpovědi, bez předmětu a bez komentáře."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000110",
+      "name": "Návrh odpovědi",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [1080, 40]
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "=Re: {{ $('Příprava textu').item.json.predmet }}",
+        "emailType": "text",
+        "message": "={{ $json.text }}",
+        "options": {
+          "sendTo": "={{ $('Příprava textu').item.json.odesilatel }}",
+          "threadId": "={{ $('Příprava textu').item.json.threadId }}"
+        }
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000111",
+      "name": "Uložit koncept",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1300, 40],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PLACEHOLDER",
+          "name": "Gmail — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Triage"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Datum": "={{ $now.toISO() }}",
+            "Odesilatel": "={{ $('Příprava textu').item.json.odesilatel }}",
+            "Predmet": "={{ $('Příprava textu').item.json.predmet }}",
+            "Kategorie": "={{ $('Klasifikace AI').item.json.output.kategorie }}",
+            "Priorita": "={{ $('Klasifikace AI').item.json.output.priorita }}",
+            "Spolehlivost": "={{ $('Klasifikace AI').item.json.output.spolehlivost }}",
+            "Duvod": "={{ $('Klasifikace AI').item.json.output.duvod }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000112",
+      "name": "Zápis do přehledu",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1520, 180],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Google Sheets — doplnit"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Nová zpráva": {
+      "main": [[{ "node": "Příprava textu", "type": "main", "index": 0 }]]
+    },
+    "Příprava textu": {
+      "main": [[{ "node": "Je to automatická odpověď?", "type": "main", "index": 0 }]]
+    },
+    "Je to automatická odpověď?": {
+      "main": [
+        [{ "node": "Konec — smyčka", "type": "main", "index": 0 }],
+        [{ "node": "Klasifikace AI", "type": "main", "index": 0 }]
+      ]
+    },
+    "Jazykový model Claude": {
+      "ai_languageModel": [
+        [
+          { "node": "Klasifikace AI", "type": "ai_languageModel", "index": 0 },
+          { "node": "Návrh odpovědi", "type": "ai_languageModel", "index": 0 }
+        ]
+      ]
+    },
+    "Klasifikace AI": {
+      "main": [[{ "node": "Spolehlivá klasifikace?", "type": "main", "index": 0 }]]
+    },
+    "Spolehlivá klasifikace?": {
+      "main": [
+        [{ "node": "Štítek a priorita", "type": "main", "index": 0 }],
+        [{ "node": "Ke kontrole člověku", "type": "main", "index": 0 }]
+      ]
+    },
+    "Štítek a priorita": {
+      "main": [[{ "node": "Návrh odpovědi", "type": "main", "index": 0 }]]
+    },
+    "Návrh odpovědi": {
+      "main": [[{ "node": "Uložit koncept", "type": "main", "index": 0 }]]
+    },
+    "Uložit koncept": {
+      "main": [[{ "node": "Zápis do přehledu", "type": "main", "index": 0 }]]
+    },
+    "Ke kontrole člověku": {
+      "main": [[{ "node": "Zápis do přehledu", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "versionId": "demo-0001"
+}

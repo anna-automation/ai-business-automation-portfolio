@@ -1,0 +1,367 @@
+{
+  "name": "Faktury z přílohy do tabulky",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 15,
+              "unit": "minutes"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "readStatus": "unread",
+          "q": "has:attachment filename:pdf"
+        },
+        "options": {
+          "downloadAttachments": true,
+          "dataPropertyAttachmentsPrefixName": "attachment_"
+        }
+      },
+      "id": "a1b2c3d4-0003-4000-8000-000000000301",
+      "name": "Nová faktura v příloze",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [-260, 300],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PLACEHOLDER",
+          "name": "Gmail — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "attachment_0",
+        "options": {
+          "joinPages": true
+        }
+      },
+      "id": "a1b2c3d4-0003-4000-8000-000000000302",
+      "name": "Text z přílohy",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [-40, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-0003-citelnost",
+              "leftValue": "={{ ($json.text || '').length }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0003-4000-8000-000000000303",
+      "name": "Je text čitelný?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [180, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.ocr-sluzba.example/v1/ocr",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "attachment_0"
+            },
+            {
+              "name": "language",
+              "value": "ces"
+            },
+            {
+              "name": "deskew",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "a1b2c3d4-0003-4000-8000-000000000304",
+      "name": "OCR skenu",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 480],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PLACEHOLDER",
+          "name": "OCR služba — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-opus-5",
+          "cachedResultName": "Claude Opus 5"
+        },
+        "options": {
+          "maxTokensToSample": 1200
+        }
+      },
+      "id": "a1b2c3d4-0003-4000-8000-000000000305",
+      "name": "Jazykový model Claude",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [560, 700],
+      "credentials": {
+        "anthropicApi": {
+          "id": "PLACEHOLDER",
+          "name": "Anthropic — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.text }}",
+        "schemaType": "manual",
+        "inputSchema": "{\"type\":\"object\",\"properties\":{\"dodavatel\":{\"type\":\"string\"},\"ico\":{\"type\":\"string\"},\"dic\":{\"type\":\"string\"},\"variabilniSymbol\":{\"type\":\"string\"},\"zaklad\":{\"type\":\"number\"},\"dph\":{\"type\":\"number\"},\"celkem\":{\"type\":\"number\"},\"mena\":{\"type\":\"string\"},\"datumVystaveni\":{\"type\":\"string\"},\"datumSplatnosti\":{\"type\":\"string\"},\"spolehlivost\":{\"type\":\"number\"}},\"required\":[\"dodavatel\",\"variabilniSymbol\",\"zaklad\",\"dph\",\"celkem\",\"mena\",\"datumSplatnosti\",\"spolehlivost\"]}",
+        "options": {
+          "systemPromptTemplate": "Dostaneš text české faktury, případně výstup OCR ze skenu. Vytěž pole podle schématu. Nic nedopočítávej a nic nevymýšlej.\n\nDODAVATEL: obchodní jméno toho, kdo fakturu vystavil, tedy strana označená Dodavatel nebo Prodávající. Nezaměň ji s odběratelem. Na českých fakturách je dodavatel obvykle vlevo nahoře, odběratel vpravo.\n\nICO: osmimístné číslo u dodavatele, jen číslice. DIC: ve formátu CZ a osm až deset číslic. Když některé chybí, vrať prázdný řetězec.\n\nVARIABILNISYMBOL: hledej označení VS, Variabilní symbol, nebo při platbě uveďte. Když je uvedeno jen číslo faktury a VS nikde, použij číslo faktury zbavené nečíselných znaků. Když ani to ne, vrať prázdný řetězec — prázdná hodnota je správná odpověď, vymyšlené číslo je chyba.\n\nZAKLAD, DPH, CELKEM: čísla bez měny a bez mezer, desetinná tečka. ZAKLAD je základ daně, DPH je samotná daň, CELKEM je částka k úhradě.\n- Když faktura má více sazeb DPH, sečti základy do ZAKLAD a daně do DPH.\n- Když je faktura bez DPH (neplátce, přenesená daňová povinnost), dej DPH nulu a ZAKLAD rovný CELKEM.\n- NIKDY nedopočítávej chybějící hodnotu z ostatních dvou. Když jednu z nich na faktuře nenajdeš, vrať 0 a sniž spolehlivost.\n\nMENA: třípísmenný kód, CZK, EUR, USD. Pozor na formát čísel: v cizí měně bývá 1,240.00 (tisíce čárkou), v češtině 1 240,00 (desetiny čárkou). Nespleť si řády.\n\nDATUMVYSTAVENI a DATUMSPLATNOSTI: ve formátu YYYY-MM-DD. Datum splatnosti bývá uvedeno jako Datum splatnosti nebo Splatno do. Když je uvedena jen lhůta ve dnech, přičti ji k datu vystavení. Když datum nenajdeš, vrať prázdný řetězec.\n\nSPOLEHLIVOST: číslo 0–1, nakolik si jsi vytěžením jistý. Buď přísný a dej nejvýš 0,6, když: je text zřejmě z nekvalitního OCR a obsahuje slepené nebo nesmyslné znaky, dokument vůbec nevypadá jako faktura, nenašel jsi variabilní symbol nebo některou z částek, nebo si nejsi jistý, která strana je dodavatel. Nenadhodnocuj — faktura s nízkou spolehlivostí jde člověku ke kontrole, což je správný a očekávaný výsledek."
+        }
+      },
+      "id": "a1b2c3d4-0003-4000-8000-000000000306",
+      "name": "Vytěžení faktury",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.1,
+      "position": [620, 300]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Faktury"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0003-4000-8000-000000000307",
+      "name": "Načíst zaúčtované VS",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [840, 300],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Google Sheets — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Zkontroluje součty, zaokrouhlení, měnu a duplicitu. Rozhodne, co smí do tabulky.\nconst f = $('Vytěžení faktury').first().json.output ?? {};\n\n// Čísla z faktur chodí v různých formátech: 1 240,00 i 1,240.00.\nconst cislo = (v) => {\n  const t = String(v ?? '').replace(/\\s/g, '').replace(/,(\\d{2})$/, '.$1').replace(/,/g, '');\n  const n = Number(t);\n  return Number.isFinite(n) ? n : null;\n};\n\nconst zaklad = cislo(f.zaklad);\nconst dph = cislo(f.dph);\nconst celkem = cislo(f.celkem);\nconst vs = String(f.variabilniSymbol ?? '').replace(/\\D/g, '');\nconst mena = String(f.mena ?? 'CZK').toUpperCase();\nconst spolehlivost = cislo(f.spolehlivost) ?? 0;\n\n// Variabilní symboly, které už v tabulce jsou.\nconst zapsaneVS = $input.all()\n  .map((i) => String(i.json.VS ?? '').replace(/\\D/g, ''))\n  .filter(Boolean);\n\nconst duvody = [];\n\nif (spolehlivost < 0.8) duvody.push('nizka spolehlivost vyteni: ' + spolehlivost);\nif (!vs) duvody.push('chybi variabilni symbol');\nif (vs && zapsaneVS.includes(vs)) duvody.push('podezreni na duplicitu, VS ' + vs + ' uz v tabulce je');\nif (mena !== 'CZK') duvody.push('cizi mena ' + mena + ', prepocet patri clovku');\nif (!f.datumSplatnosti) duvody.push('chybi datum splatnosti');\n\nif (zaklad === null || dph === null || celkem === null) {\n  duvody.push('nepodarilo se precist castky');\n} else {\n  // Haléřový rozdíl do 1 Kč je u českých faktur normální: DPH se počítá\n  // po položkách a celková částka se zaokrouhluje na korunu.\n  const rozdil = Math.round((zaklad + dph - celkem) * 100) / 100;\n  if (Math.abs(rozdil) > 1) {\n    duvody.push('zaklad + DPH se nerovna celkem, rozdil ' + rozdil + ' Kc');\n  }\n}\n\nreturn [{\n  json: {\n    dodavatel: String(f.dodavatel ?? '').trim(),\n    ico: String(f.ico ?? '').replace(/\\D/g, ''),\n    dic: String(f.dic ?? '').trim(),\n    vs,\n    zaklad: zaklad ?? 0,\n    dph: dph ?? 0,\n    celkem: celkem ?? 0,\n    mena,\n    datumVystaveni: f.datumVystaveni ?? '',\n    datumSplatnosti: f.datumSplatnosti ?? '',\n    spolehlivost,\n    muzeDoTabulky: duvody.length === 0,\n    duvodKontroly: duvody.join('; ')\n  }\n}];"
+      },
+      "id": "a1b2c3d4-0003-4000-8000-000000000308",
+      "name": "Kontrola součtů a duplicity",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1060, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-0003-muze-dal",
+              "leftValue": "={{ $json.muzeDoTabulky }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0003-4000-8000-000000000309",
+      "name": "Může jít do tabulky?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1280, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Faktury"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Datum": "={{ $now.toISO() }}",
+            "Dodavatel": "={{ $json.dodavatel }}",
+            "ICO": "={{ $json.ico }}",
+            "DIC": "={{ $json.dic }}",
+            "VS": "={{ $json.vs }}",
+            "Zaklad": "={{ $json.zaklad }}",
+            "DPH": "={{ $json.dph }}",
+            "Celkem": "={{ $json.celkem }}",
+            "Mena": "={{ $json.mena }}",
+            "DatumVystaveni": "={{ $json.datumVystaveni }}",
+            "DatumSplatnosti": "={{ $json.datumSplatnosti }}",
+            "Spolehlivost": "={{ $json.spolehlivost }}",
+            "Zdroj": "={{ $('Nová faktura v příloze').item.json.id }}",
+            "Stav": "nova"
+          }
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0003-4000-8000-000000000310",
+      "name": "Zápis řádku do tabulky",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1500, 180],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Google Sheets — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Nová faktura v příloze').item.json.id }}",
+        "labelIds": ["LABEL_ID_FAKTURY_KE_KONTROLE"]
+      },
+      "id": "a1b2c3d4-0003-4000-8000-000000000311",
+      "name": "Štítek Ke kontrole",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1500, 460],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PLACEHOLDER",
+          "name": "Gmail — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "vas@email.cz",
+        "toEmail": "vas@email.cz",
+        "subject": "=Faktura ke kontrole: {{ $('Kontrola součtů a duplicity').item.json.dodavatel || 'neznámý dodavatel' }}",
+        "emailFormat": "text",
+        "text": "=Faktura neprošla automatickou kontrolou a do tabulky se nezapsala.\n\nDůvod: {{ $('Kontrola součtů a duplicity').item.json.duvodKontroly }}\n\nCo se podařilo vytěžit:\nDodavatel: {{ $('Kontrola součtů a duplicity').item.json.dodavatel }}\nIČO: {{ $('Kontrola součtů a duplicity').item.json.ico }}\nVariabilní symbol: {{ $('Kontrola součtů a duplicity').item.json.vs }}\nZáklad: {{ $('Kontrola součtů a duplicity').item.json.zaklad }}\nDPH: {{ $('Kontrola součtů a duplicity').item.json.dph }}\nCelkem: {{ $('Kontrola součtů a duplicity').item.json.celkem }} {{ $('Kontrola součtů a duplicity').item.json.mena }}\nSplatnost: {{ $('Kontrola součtů a duplicity').item.json.datumSplatnosti }}\nSpolehlivost vytěžení: {{ $('Kontrola součtů a duplicity').item.json.spolehlivost }}\n\nOriginál najdete v Gmailu pod štítkem Faktury/Ke kontrole.\nTato čísla jsou návrh, ne doklad. Opravte je podle originálu a řádek zapište ručně.",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0003-4000-8000-000000000312",
+      "name": "Mail ke kontrole",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1720, 460],
+      "credentials": {
+        "smtp": {
+          "id": "PLACEHOLDER",
+          "name": "SMTP — doplnit"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Nová faktura v příloze": {
+      "main": [[{ "node": "Text z přílohy", "type": "main", "index": 0 }]]
+    },
+    "Text z přílohy": {
+      "main": [[{ "node": "Je text čitelný?", "type": "main", "index": 0 }]]
+    },
+    "Je text čitelný?": {
+      "main": [
+        [{ "node": "Vytěžení faktury", "type": "main", "index": 0 }],
+        [{ "node": "OCR skenu", "type": "main", "index": 0 }]
+      ]
+    },
+    "OCR skenu": {
+      "main": [[{ "node": "Vytěžení faktury", "type": "main", "index": 0 }]]
+    },
+    "Jazykový model Claude": {
+      "ai_languageModel": [
+        [{ "node": "Vytěžení faktury", "type": "ai_languageModel", "index": 0 }]
+      ]
+    },
+    "Vytěžení faktury": {
+      "main": [[{ "node": "Načíst zaúčtované VS", "type": "main", "index": 0 }]]
+    },
+    "Načíst zaúčtované VS": {
+      "main": [[{ "node": "Kontrola součtů a duplicity", "type": "main", "index": 0 }]]
+    },
+    "Kontrola součtů a duplicity": {
+      "main": [[{ "node": "Může jít do tabulky?", "type": "main", "index": 0 }]]
+    },
+    "Může jít do tabulky?": {
+      "main": [
+        [{ "node": "Zápis řádku do tabulky", "type": "main", "index": 0 }],
+        [{ "node": "Štítek Ke kontrole", "type": "main", "index": 0 }]
+      ]
+    },
+    "Štítek Ke kontrole": {
+      "main": [[{ "node": "Mail ke kontrole", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "versionId": "demo-0003"
+}

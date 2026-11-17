@@ -1,0 +1,25 @@
+{
+  "slug": "zapis-z-porady-na-ukoly",
+  "title": {
+    "cs": "Zápis z porady na úkoly",
+    "en": "Meeting notes into tasks"
+  },
+  "summary": {
+    "cs": "Z nahrávky nebo poznámek vznikne shrnutí a seznam úkolů s odpovědnou osobou a termínem; po schválení dostane každý mail jen se svými.",
+    "en": "A recording or raw notes become a summary and a task list with owners and deadlines; once approved, each person gets only their own."
+  },
+  "pillar": "n8n",
+  "difficulty": "intermediate",
+  "icon": "KanbanSquare",
+  "tone": "accent",
+  "tools": ["n8n", "Přepis řeči", "Claude API", "Notion", "SMTP"],
+  "saves": {
+    "amount": 45,
+    "unit": { "cs": "min / porada", "en": "min / meeting" }
+  },
+  "savesPerMonth": 6,
+  "demo": "tasks",
+  "audiences": ["office", "hr", "services"],
+  "tags": ["porady", "ukoly", "ai"],
+  "status": "ready"
+}

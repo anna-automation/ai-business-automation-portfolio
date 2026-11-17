@@ -1,0 +1,44 @@
+{
+  "slug": "generovani-nabidky-z-poptavky",
+  "title": {
+    "cs": "Generování nabídky z poptávky",
+    "en": "Quote generation from an enquiry"
+  },
+  "summary": {
+    "cs": "Z poptávky v CRM vznikne hotová nabídka v PDF — cenu počítá kód, texty doladí AI, odeslání schvaluje obchodník.",
+    "en": "A CRM enquiry turns into a finished PDF quote — code computes the price, AI polishes the text, sales approves."
+  },
+  "pillar": "n8n",
+  "difficulty": "advanced",
+  "icon": "FileText",
+  "tone": "accent",
+  "tools": [
+    "n8n",
+    "CRM API",
+    "Google Sheets",
+    "Claude API",
+    "Google Docs",
+    "Gmail"
+  ],
+  "saves": {
+    "amount": 45,
+    "unit": {
+      "cs": "min / nabídka",
+      "en": "min / quote"
+    }
+  },
+  "savesPerMonth": 10,
+  "demo": "quote",
+  "audiences": [
+    "services",
+    "realestate",
+    "eshop",
+    "office"
+  ],
+  "tags": [
+    "nabidka",
+    "cenik",
+    "pdf"
+  ],
+  "status": "ready"
+}

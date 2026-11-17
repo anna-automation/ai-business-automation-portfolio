@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="cs" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <title>MAKÁSAMO — automatizace pro byznys</title>
+    <meta
+      name="description"
+      content="Automatizace firemních procesů od zmapování po nasazení. Prompty, n8n workflows, jednoduché CRM, AI v MS Office a výukové materiály — ukázky si vyzkoušíte přímo v prohlížeči."
+    />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#0A0A12" />
+    <link rel="icon" type="image/png" href="/media/favicon.png" />
+    <link rel="apple-touch-icon" href="/media/apple-touch-icon.png" />
+
+    <!-- Logo je první, co se na stránce ukáže — ať na něj prohlížeč nečeká. -->
+    <link rel="preload" as="image" href="/media/makasamo-logo.png" />
+    <script>
+      // Téma se aplikuje před prvním vykreslením, aby nikde neproblikl špatný vzhled.
+      try {
+        const saved = localStorage.getItem('abl-theme')
+        const theme =
+          saved ?? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+        document.documentElement.dataset.theme = theme
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

@@ -1,0 +1,325 @@
+{
+  "name": "Poptávka z formuláře do CRM",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "poptavka-web",
+        "responseMode": "onReceived",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "id": "a1b2c3d4-0002-4000-8000-000000000201",
+      "name": "Formulář z webu",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-240, 300],
+      "webhookId": "a1b2c3d4-0002-4000-8000-00000000wh01"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Zvaliduje odeslaný formulář a spočítá kontrolní součet proti duplicitám.\nconst vstup = $input.first().json;\nconst data = vstup.body ?? vstup;\n\nconst ocistit = (v) => String(v ?? '').trim();\n\nconst jmeno = ocistit(data.jmeno);\n// E-mail normalizujeme na malá písmena — jinak by se Jan@firma.cz a jan@firma.cz\n// chovaly jako dvě různé poptávky a duplicitu bychom nepoznali.\nconst email = ocistit(data.email).toLowerCase();\nconst telefon = ocistit(data.telefon);\nconst zprava = ocistit(data.zprava);\nconst honeypot = ocistit(data.web_url);\nconst souhlasText = ocistit(data.souhlas_text);\nconst souhlas = data.souhlas === true || data.souhlas === 'true' || data.souhlas === 'on';\n\nconst chyby = [];\nif (jmeno.length < 2) chyby.push('jmeno');\nif (!/^[^@\\s]+@[^@\\s.]+\\.[^@\\s]{2,}$/.test(email)) chyby.push('email');\nif (zprava.length < 10) chyby.push('zprava_prilis_kratka');\nif (zprava.length > 5000) chyby.push('zprava_prilis_dlouha');\nif (honeypot !== '') chyby.push('honeypot');\nif (!souhlas || souhlasText === '') chyby.push('chybi_souhlas');\n\n// Deterministický hash bez závislostí. Na rozpoznání opakovaného odeslání\n// stačí; není to kryptografická funkce a nemá tak být použit.\nfunction hash(text) {\n  let h = 0;\n  for (let i = 0; i < text.length; i++) {\n    h = (h * 31 + text.charCodeAt(i)) | 0;\n  }\n  return 'p' + Math.abs(h).toString(36);\n}\n\nreturn [{\n  json: {\n    jeValidni: chyby.length === 0,\n    chyby: chyby.join(','),\n    jmeno,\n    email,\n    telefon,\n    zprava,\n    souhlas,\n    souhlasText,\n    hash: hash(email + '|' + zprava.slice(0, 200))\n  }\n}];"
+      },
+      "id": "a1b2c3d4-0002-4000-8000-000000000202",
+      "name": "Validace a antispam",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-20, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-0002-validace",
+              "leftValue": "={{ $json.jeValidni }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0002-4000-8000-000000000203",
+      "name": "Prošla validace?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {},
+      "id": "a1b2c3d4-0002-4000-8000-000000000204",
+      "name": "Zamítnuto",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [420, 460]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-opus-5",
+          "cachedResultName": "Claude Opus 5"
+        },
+        "options": {
+          "maxTokensToSample": 700
+        }
+      },
+      "id": "a1b2c3d4-0002-4000-8000-000000000205",
+      "name": "Jazykový model Claude",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [480, 620],
+      "credentials": {
+        "anthropicApi": {
+          "id": "PLACEHOLDER",
+          "name": "Anthropic — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.zprava }}",
+        "schemaType": "manual",
+        "inputSchema": "{\"type\":\"object\",\"properties\":{\"obor\":{\"type\":\"string\"},\"odhadKc\":{\"type\":\"number\"},\"horizont\":{\"type\":\"string\",\"enum\":[\"ihned\",\"do_mesice\",\"do_pul_roku\",\"neurceno\"]},\"rekapitulace\":{\"type\":\"string\"}},\"required\":[\"obor\",\"odhadKc\",\"horizont\",\"rekapitulace\"]}",
+        "options": {
+          "systemPromptTemplate": "Dostaneš text poptávky, kterou zákazník napsal do formuláře na webu. Vrať strukturovaný odhad podle schématu, nic jiného. Odpovídej česky.\n\nOBOR: dvě až čtyři slova, čím se poptávka věcně zabývá. Například rekonstrukce bytu, webové stránky, účetnictví, pronájem kanceláře, úklid, školení. Když to z textu nejde poznat, napiš nezjisteno.\n\nODHADKC: celé číslo v korunách, odhad hodnoty zakázky. Pravidla:\n- Když zákazník uvede rozpočet nebo množství, vycházej z toho.\n- Když neuvede nic, odhadni typickou cenu takové zakázky v Česku a radši buď na dolní hranici.\n- Když nemáš vůbec z čeho vyjít, vrať 0. Nulu nepovažuj za chybu — znamená to, že odhad nemá oporu v textu a člověk se na to musí podívat.\n- Nikdy nevymýšlej částku, abys vyplnil pole.\n\nHORIZONT:\n- ihned: zákazník píše o havárii, dnešním nebo zítřejším termínu, spěchu.\n- do_mesice: konkrétní termín v řádu týdnů.\n- do_pul_roku: plánuje, ptá se na podmínky, nemá termín.\n- neurceno: o čase se text nezmiňuje.\n\nREKAPITULACE: jedna věta do 160 znaků, co zákazník chce. Žádné zdvořilosti, žádné hodnocení. Pokud jsou v textu vlastní jména nebo kontakty, do rekapitulace je nepřepisuj.\n\nNehádej údaje, které v textu nejsou. Odhad hodnoty je odhad pro obchodníka, ne nabídka pro zákazníka."
+        }
+      },
+      "id": "a1b2c3d4-0002-4000-8000-000000000206",
+      "name": "Doplnění oboru a hodnoty",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.1,
+      "position": [420, 160]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Poptavky"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Hash",
+              "lookupValue": "={{ $('Validace a antispam').item.json.hash }}"
+            }
+          ]
+        },
+        "options": {
+          "returnFirstMatch": true
+        }
+      },
+      "id": "a1b2c3d4-0002-4000-8000-000000000207",
+      "name": "Hledat duplicitu",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [640, 160],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Google Sheets — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-0002-duplicita",
+              "leftValue": "={{ $json.Hash || '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0002-4000-8000-000000000208",
+      "name": "Už to máme?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [860, 160]
+    },
+    {
+      "parameters": {},
+      "id": "a1b2c3d4-0002-4000-8000-000000000209",
+      "name": "Duplicitní poptávka",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1080, 320]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Poptavky"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Datum": "={{ $now.toISO() }}",
+            "Jmeno": "={{ $('Validace a antispam').item.json.jmeno }}",
+            "Email": "={{ $('Validace a antispam').item.json.email }}",
+            "Telefon": "={{ $('Validace a antispam').item.json.telefon }}",
+            "Zprava": "={{ $('Validace a antispam').item.json.zprava }}",
+            "Obor": "={{ $('Doplnění oboru a hodnoty').item.json.output.obor }}",
+            "OdhadKc": "={{ $('Doplnění oboru a hodnoty').item.json.output.odhadKc }}",
+            "Horizont": "={{ $('Doplnění oboru a hodnoty').item.json.output.horizont }}",
+            "Rekapitulace": "={{ $('Doplnění oboru a hodnoty').item.json.output.rekapitulace }}",
+            "Souhlas": "={{ $('Validace a antispam').item.json.souhlas }}",
+            "SouhlasText": "={{ $('Validace a antispam').item.json.souhlasText }}",
+            "Hash": "={{ $('Validace a antispam').item.json.hash }}",
+            "Stav": "nova"
+          }
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0002-4000-8000-000000000210",
+      "name": "Zápis do CRM",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1080, 40],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Google Sheets — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#poptavky"
+        },
+        "text": "=Nová poptávka: *{{ $('Doplnění oboru a hodnoty').item.json.output.obor }}*\n{{ $('Doplnění oboru a hodnoty').item.json.output.rekapitulace }}\n\nOdhad hodnoty: {{ $('Doplnění oboru a hodnoty').item.json.output.odhadKc }} Kč (odhad AI, ne nabídka)\nHorizont: {{ $('Doplnění oboru a hodnoty').item.json.output.horizont }}\nKontakt: {{ $('Validace a antispam').item.json.jmeno }} — {{ $('Validace a antispam').item.json.email }} — {{ $('Validace a antispam').item.json.telefon }}\n\nTabulka: https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "a1b2c3d4-0002-4000-8000-000000000211",
+      "name": "Notifikace obchodníkovi",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1300, 40],
+      "credentials": {
+        "slackApi": {
+          "id": "PLACEHOLDER",
+          "name": "Slack — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "vas@email.cz",
+        "toEmail": "={{ $('Validace a antispam').item.json.email }}",
+        "subject": "Potvrzujeme přijetí vaší poptávky",
+        "emailFormat": "text",
+        "text": "=Dobrý den,\n\npotvrzujeme, že jsme vaši poptávku přijali. Takto jsme jí rozuměli:\n\n{{ $('Doplnění oboru a hodnoty').item.json.output.rekapitulace }}\n\nOzveme se vám nejpozději do jednoho pracovního dne. Pokud jste se spletli v kontaktu nebo chcete něco doplnit, odpovězte prosím na tento e-mail.\n\nS pozdravem\nJMENO\nNAZEV_FIRMY\nTELEFON",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0002-4000-8000-000000000212",
+      "name": "Potvrzení zákazníkovi",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1520, 40],
+      "credentials": {
+        "smtp": {
+          "id": "PLACEHOLDER",
+          "name": "SMTP — doplnit"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Formulář z webu": {
+      "main": [[{ "node": "Validace a antispam", "type": "main", "index": 0 }]]
+    },
+    "Validace a antispam": {
+      "main": [[{ "node": "Prošla validace?", "type": "main", "index": 0 }]]
+    },
+    "Prošla validace?": {
+      "main": [
+        [{ "node": "Doplnění oboru a hodnoty", "type": "main", "index": 0 }],
+        [{ "node": "Zamítnuto", "type": "main", "index": 0 }]
+      ]
+    },
+    "Jazykový model Claude": {
+      "ai_languageModel": [
+        [{ "node": "Doplnění oboru a hodnoty", "type": "ai_languageModel", "index": 0 }]
+      ]
+    },
+    "Doplnění oboru a hodnoty": {
+      "main": [[{ "node": "Hledat duplicitu", "type": "main", "index": 0 }]]
+    },
+    "Hledat duplicitu": {
+      "main": [[{ "node": "Už to máme?", "type": "main", "index": 0 }]]
+    },
+    "Už to máme?": {
+      "main": [
+        [{ "node": "Duplicitní poptávka", "type": "main", "index": 0 }],
+        [{ "node": "Zápis do CRM", "type": "main", "index": 0 }]
+      ]
+    },
+    "Zápis do CRM": {
+      "main": [[{ "node": "Notifikace obchodníkovi", "type": "main", "index": 0 }]]
+    },
+    "Notifikace obchodníkovi": {
+      "main": [[{ "node": "Potvrzení zákazníkovi", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "versionId": "demo-0002"
+}

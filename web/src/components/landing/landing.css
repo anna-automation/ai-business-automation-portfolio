@@ -1,0 +1,942 @@
+/* ---------------------------------------------------------------------------
+   Landing page MAKÁSAMO
+   Vlastní uzavřený svět: neon na černo-fialové, růžová + cyan. Všechno je
+   zapouzdřené pod .lp, aby se to nepralo s tokeny zbytku webu a drželo tmavý
+   vzhled i při světlém tématu.
+   --------------------------------------------------------------------------- */
+
+/* Dokud je vidět landing, drží celá plocha za stránkou tmavou barvu a sdílené
+   prvky webu (kurzor, ukazatel scrollu, lišta cookies) svítí růžově místo
+   limetkově. Mimo úvodní stránku se příznak odstraní a nic z toho neplatí. */
+html[data-landing='on'] {
+  --accent: #ff1466;
+  --accent-bright: #ff3d85;
+  --accent-ink: #ffffff;
+  --violet: #7c3aed;
+}
+
+html[data-landing='on'] body {
+  background-color: #07060f;
+}
+
+.lp {
+  --lp-bg: #07060f;
+  --lp-bg-deep: #050410;
+  --lp-ink: #ffffff;
+  --lp-soft: #c8cadb;
+  --lp-dim: #9aa0bb;
+
+  --lp-pink: #ff1466;
+  --lp-pink-bright: #ff3d85;
+  --lp-pink-deep: #d8004f;
+  --lp-violet: #7c3aed;
+  --lp-cyan: #22d3ee;
+
+  --lp-card: rgb(255 255 255 / 0.045);
+  --lp-card-line: rgb(255 255 255 / 0.09);
+
+  position: relative;
+  isolation: isolate;
+  background: var(--lp-bg);
+  color: var(--lp-ink);
+  font-family: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  overflow-x: clip;
+}
+
+/* Nadpisy jdou v jednom těžkém grotesku, ne v display fontu zbytku webu. */
+.lp h1,
+.lp h2,
+.lp h3,
+.lp h4 {
+  font-family: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+
+.lp ::selection {
+  background: var(--lp-pink);
+  color: #fff;
+}
+
+.lp :focus-visible {
+  outline: 2px solid var(--lp-pink-bright);
+  outline-offset: 3px;
+}
+
+/* Skleněná karta — jemný spád shora, tenká linka, nic křiklavého. */
+.lp-card {
+  position: relative;
+  border-radius: 1.25rem;
+  border: 1px solid var(--lp-card-line);
+  background: linear-gradient(
+    158deg,
+    rgb(255 255 255 / 0.07) 0%,
+    rgb(255 255 255 / 0.025) 42%,
+    rgb(255 255 255 / 0.012) 100%
+  );
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Rámeček z neonové trubice: gradient maskovaný jen do obrysu + rozmazaná
+   kopie pod ním jako záře. */
+.lp-neon {
+  position: relative;
+  border-radius: 1.5rem;
+}
+
+.lp-neon::before,
+.lp-neon::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: var(--lp-neon-width, 2px);
+  background: var(
+    --lp-neon-gradient,
+    linear-gradient(100deg, var(--lp-pink) 0%, var(--lp-pink) 22%, var(--lp-violet) 58%, var(--lp-cyan) 100%)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Trubka patří nad vnitřek rámečku. Vnitřní vrstva je skoro neprůhledná a
+   kdyby ležela na trubce, zbyde z neonu matná linka. */
+.lp-neon::before {
+  z-index: 2;
+}
+
+/* Záře pod trubkou. Je o něco tlustší než trubka sama — rozmazaná kopie
+   stejné tloušťky by jen zešedla a na předloze kolem rámečku svítí pořádný
+   nádech. */
+.lp-neon::after {
+  padding: calc(var(--lp-neon-width, 2px) * 2.4);
+  filter: blur(var(--lp-neon-blur, 13px));
+  opacity: var(--lp-neon-glow, 0.75);
+  z-index: -1;
+}
+
+/* Růžová pilulka — hlavní akce stránky.
+   Rozvržení (display, gap) zůstává v utilitách u komponenty: kdyby bylo tady,
+   přebilo by `hidden` i `sm:inline-flex`, protože tenhle soubor leží mimo
+   vrstvy Tailwindu a vyhrál by nad nimi. */
+.lp-pill {
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff3b7f 0%, #ff0f5f 52%, #e60050 100%);
+  color: #fff;
+  /* Kapitálky: popisek drží linku velkých písmen, ale ve výšce malých — proto
+     je v komponentě o stupeň větší font. Když font `smcp` nemá, prohlížeč si
+     kapitálky dopočítá sám a výsledek je stejný. */
+  font-variant-caps: all-small-caps;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  box-shadow: 0 10px 34px -10px rgb(255 20 102 / 0.85), inset 0 1px 0 rgb(255 255 255 / 0.28);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s, filter 0.35s;
+}
+
+.lp-pill:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.06);
+  box-shadow: 0 16px 44px -10px rgb(255 20 102 / 0.95), inset 0 1px 0 rgb(255 255 255 / 0.32);
+}
+
+.lp-pill:active {
+  transform: translateY(0) scale(0.985);
+}
+
+/* Mikro-label nad nadpisem sekce. */
+.lp-eyebrow {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--lp-pink);
+}
+
+/* Krátká růžová linka pod nadpisem sekce. */
+.lp-underline {
+  display: block;
+  height: 4px;
+  width: 4.5rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--lp-pink) 0%, var(--lp-pink-deep) 100%);
+  box-shadow: 0 0 18px -2px rgb(255 20 102 / 0.8);
+}
+
+/* Ikony v kartách svítí, ne jen leží. */
+.lp-glow-pink {
+  color: var(--lp-pink);
+  filter: drop-shadow(0 0 10px rgb(255 20 102 / 0.55));
+}
+
+.lp-glow-cyan {
+  color: var(--lp-cyan);
+  filter: drop-shadow(0 0 10px rgb(34 211 238 / 0.55));
+}
+
+/* Portrét v hero splývá s pozadím po okrajích. Do stran jen úzký nádech —
+   neonový prstenec sahá skoro až k hraně fotky a nesmí se uříznout. */
+.lp-portrait-mask {
+  /* Fotka nemá mít jedinou tvrdou hranu — do stránky se vlévá ze všech čtyř
+     stran. Nahoře je nádech nejdelší: tam končí snímek nejblíž hlavě a zároveň
+     tudy prochází hlavička webu, která musí zůstat čitelná.
+     Obě osy řeší vždy jeden spád — tři vrstvy masky se přes mask-composite
+     nechovají napříč prohlížeči stejně. */
+  --lp-portrait-fade: linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgb(0 0 0 / 0.3) 6%,
+      rgb(0 0 0 / 0.78) 12%,
+      #000 18%,
+      #000 62%,
+      rgb(0 0 0 / 0.4) 86%,
+      transparent 99%
+    ),
+    linear-gradient(
+      to right,
+      transparent 0%,
+      rgb(0 0 0 / 0.45) 7%,
+      #000 17%,
+      #000 78%,
+      rgb(0 0 0 / 0.62) 89%,
+      rgb(0 0 0 / 0.22) 96%,
+      transparent 100%
+    );
+  -webkit-mask-image: var(--lp-portrait-fade);
+  mask-image: var(--lp-portrait-fade);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+/* Záře za portrétem — fotka si neonový prstenec nese sama, tohle ji jen
+   posadí do stránky. */
+@keyframes lp-ring-breathe {
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.lp-ring {
+  animation: lp-ring-breathe 7s ease-in-out infinite;
+}
+
+@keyframes lp-arrow-slide {
+  0%,
+  100% {
+    transform: translateX(0);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateX(6px);
+    opacity: 1;
+  }
+}
+
+.lp-arrows {
+  animation: lp-arrow-slide 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-ring,
+  .lp-arrows {
+    animation: none;
+  }
+}
+
+html[data-motion='reduced'] .lp-ring,
+html[data-motion='reduced'] .lp-arrows {
+  animation: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Kontaktní stránka
+   Stejný svět jako landing, jen s formulářovými prvky. Pole jsou záměrně
+   vysoká a málo kontrastní — na předloze nesou obsah, ne pozornost.
+   --------------------------------------------------------------------------- */
+
+/* Podpis psaný rukou */
+.lp-signature {
+  font-family: 'Parisienne', cursive;
+  font-weight: 400;
+}
+
+/* Fotka vlevo od formuláře se nemá rozseknout o hranu — okraje se rozplývají
+   do pozadí přesně jako na předloze. */
+/* Jeden eliptický spád, ne dva skládané: `mask-composite` se napříč
+   prohlížeči nechová stejně a okraje pak zůstanou tvrdé. Takhle se fotka
+   rozplývá do pozadí ze všech stran naráz. */
+.lp-contact-foto {
+  -webkit-mask-image: radial-gradient(
+    ellipse 78% 92% at 50% 40%,
+    #000 42%,
+    rgb(0 0 0 / 0.72) 68%,
+    rgb(0 0 0 / 0.22) 88%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 78% 92% at 50% 40%,
+    #000 42%,
+    rgb(0 0 0 / 0.72) 68%,
+    rgb(0 0 0 / 0.22) 88%,
+    transparent 100%
+  );
+}
+
+/* Karta formuláře. Rozměry jsou odměřené z předlohy: šířka 46,5 % plochy,
+   vnitřní odsazení zhruba desetina té šířky. */
+.lp-form-card {
+  border-radius: 1.75rem;
+  padding: clamp(1.5rem, 2.5vw, 2.3rem);
+  background: linear-gradient(
+    160deg,
+    rgb(32 20 54 / 0.86) 0%,
+    rgb(20 13 36 / 0.9) 55%,
+    rgb(15 10 28 / 0.94) 100%
+  );
+  border: 1px solid rgb(255 20 102 / 0.28);
+  box-shadow: 0 30px 90px -40px rgb(255 20 102 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.06);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Vstupní pole — jedna třída pro input, textarea i select */
+.lp-field {
+  width: 100%;
+  min-height: 3.5rem;
+  padding: 0 1.2rem;
+  border-radius: 0.85rem;
+  background: rgb(255 255 255 / 0.045);
+  border: 1px solid rgb(255 255 255 / 0.11);
+  color: #fff;
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.3s, background 0.3s, box-shadow 0.3s;
+}
+
+.lp-field::placeholder {
+  color: rgb(255 255 255 / 0.5);
+}
+
+/* Pole s ikonou uvnitř. Odsazení musí být tady, ne v utilitě — tenhle soubor
+   leží mimo vrstvy Tailwindu a `padding: 0 1.25rem` výše by utilitu přebilo. */
+.lp-field-ikona {
+  padding-left: 3.5rem;
+}
+
+.lp-field-sipka {
+  padding-right: 3.25rem;
+}
+
+.lp-field:hover {
+  border-color: rgb(255 255 255 / 0.18);
+}
+
+.lp-field:focus {
+  border-color: var(--lp-pink);
+  background: rgb(255 255 255 / 0.07);
+  box-shadow: 0 0 0 3px rgb(255 20 102 / 0.18);
+}
+
+/* Rozbalovací seznam dědí tmavé pozadí i pro vlastní nabídku. */
+.lp-field option {
+  background: #130d24;
+  color: #fff;
+}
+
+.lp-field-chyba,
+.lp-field-chyba:hover {
+  border-color: rgb(255 92 128 / 0.75);
+}
+
+.lp-chyba {
+  margin-top: 0.45rem;
+  font-size: 0.85rem;
+  color: #ff8aa8;
+}
+
+/* Plocha pro přetažení přílohy */
+.lp-dropzone {
+  display: flex;
+  min-height: 3.4rem;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  border-radius: 0.9rem;
+  border: 1px dashed rgb(255 255 255 / 0.22);
+  color: rgb(255 255 255 / 0.68);
+  font-size: 0.97rem;
+  transition: border-color 0.3s, background 0.3s, color 0.3s;
+}
+
+.lp-dropzone:hover {
+  border-color: rgb(255 255 255 / 0.35);
+  color: #fff;
+}
+
+.lp-dropzone-aktivni {
+  border-color: var(--lp-pink);
+  background: rgb(255 20 102 / 0.08);
+  color: #fff;
+}
+
+.lp-dropzone:focus-within {
+  border-color: var(--lp-pink);
+  box-shadow: 0 0 0 3px rgb(255 20 102 / 0.18);
+}
+
+/* Zaškrtávátko souhlasu */
+.lp-checkbox {
+  appearance: none;
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 0.1rem;
+  border-radius: 0.4rem;
+  border: 1.5px solid rgb(255 255 255 / 0.4);
+  background: transparent;
+  cursor: pointer;
+  transition: border-color 0.25s, background 0.25s;
+}
+
+.lp-checkbox:hover {
+  border-color: rgb(255 255 255 / 0.65);
+}
+
+.lp-checkbox:checked {
+  background: var(--lp-pink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E")
+    center / 0.95rem no-repeat;
+  border-color: var(--lp-pink);
+}
+
+.lp-checkbox:focus-visible {
+  outline: 2px solid var(--lp-pink);
+  outline-offset: 2px;
+}
+
+/* Hlavní tlačítko formuláře */
+.lp-submit {
+  display: flex;
+  width: 100%;
+  min-height: 4.1rem;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #ff3b7f 0%, #ff0f5f 52%, #e60050 100%);
+  color: #fff;
+  font-family: inherit;
+  font-size: 1.12rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  box-shadow: 0 14px 40px -12px rgb(255 20 102 / 0.9), inset 0 1px 0 rgb(255 255 255 / 0.28);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s, filter 0.35s;
+}
+
+.lp-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: brightness(1.06);
+  box-shadow: 0 20px 52px -12px rgb(255 20 102 / 1), inset 0 1px 0 rgb(255 255 255 / 0.32);
+}
+
+.lp-submit:active:not(:disabled) {
+  transform: translateY(0) scale(0.99);
+}
+
+.lp-submit:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+/* ---------------------------------------------------------------------------
+   Poptávkový formulář
+   Krokovaný formulář na kontaktní stránce. Pole jsou vysoká a klidná, barvu
+   dostává jen to, čeho se člověk zrovna dotýká.
+   --------------------------------------------------------------------------- */
+
+/* Plovoucí popisek. Stojí na pořadí v DOM: input je před labelem. */
+.lp-pole {
+  position: relative;
+}
+
+.lp-pole .lp-field {
+  padding-top: 1.5rem;
+  padding-bottom: 0.4rem;
+  min-height: 3.7rem;
+}
+
+.lp-pole .lp-field-oblast {
+  min-height: 9rem;
+  padding-top: 1.75rem;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.lp-pole > label {
+  position: absolute;
+  left: 1.15rem;
+  top: 1.1rem;
+  color: rgb(255 255 255 / 0.55);
+  font-size: 1rem;
+  line-height: 1;
+  pointer-events: none;
+  transition: top 0.2s ease, font-size 0.2s ease, color 0.2s ease;
+}
+
+.lp-pole .lp-field:focus ~ label,
+.lp-pole .lp-field:not(:placeholder-shown) ~ label,
+.lp-pole-stale > label {
+  top: 0.55rem;
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  color: rgb(255 255 255 / 0.5);
+}
+
+.lp-pole .lp-field:focus ~ label {
+  color: var(--lp-pink-bright);
+}
+
+.lp-pole-ikona > label {
+  left: 3.5rem;
+}
+
+/* Pole s předvolbou vlevo (telefon) */
+.lp-pole-pred .lp-field {
+  padding-left: 5.4rem;
+}
+
+.lp-pole-pred > label {
+  left: 5.4rem;
+}
+
+.lp-predvolba {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  z-index: 1;
+  transform: translateY(-50%);
+  border: none;
+  border-radius: 0.55rem;
+  background: rgb(255 255 255 / 0.07);
+  padding: 0.35rem 0.4rem;
+  color: #fff;
+  font: inherit;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.lp-predvolba option {
+  background: #130d24;
+}
+
+.lp-napoveda {
+  margin-top: 0.45rem;
+  font-size: 0.84rem;
+  color: rgb(255 255 255 / 0.5);
+}
+
+/* Čipy — krátké odpovědi na jedno kliknutí */
+.lp-cip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  background: rgb(255 255 255 / 0.04);
+  color: rgb(255 255 255 / 0.85);
+  font: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: border-color 0.25s, background 0.25s, color 0.25s, transform 0.25s;
+}
+
+.lp-cip:hover {
+  border-color: rgb(255 255 255 / 0.3);
+  color: #fff;
+}
+
+.lp-cip-aktivni,
+.lp-cip-aktivni:hover {
+  border-color: var(--lp-pink);
+  background: rgb(255 20 102 / 0.16);
+  color: #fff;
+}
+
+.lp-cip-maly {
+  min-height: 2.1rem;
+  padding: 0 0.8rem;
+  font-size: 0.85rem;
+}
+
+/* Karty prvního kroku */
+.lp-karta {
+  border-radius: 1rem;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  background: rgb(255 255 255 / 0.035);
+  padding: 1.1rem 1.15rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.3s, background 0.3s, transform 0.3s;
+}
+
+.lp-karta:hover {
+  border-color: rgb(255 255 255 / 0.26);
+  background: rgb(255 255 255 / 0.06);
+  transform: translateY(-2px);
+}
+
+.lp-karta-aktivni,
+.lp-karta-aktivni:hover {
+  border-color: var(--lp-pink);
+  background: rgb(255 20 102 / 0.12);
+}
+
+/* Posuvník rozpočtu */
+.lp-posuvnik {
+  width: 100%;
+  height: 1.5rem;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.lp-posuvnik::-webkit-slider-runnable-track {
+  height: 0.4rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.12);
+}
+
+.lp-posuvnik::-moz-range-track {
+  height: 0.4rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.12);
+}
+
+.lp-posuvnik::-webkit-slider-thumb {
+  appearance: none;
+  margin-top: -0.5rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff3b7f, #ff0f5f);
+  box-shadow: 0 6px 18px -6px rgb(255 20 102 / 0.95);
+}
+
+.lp-posuvnik::-moz-range-thumb {
+  width: 1.4rem;
+  height: 1.4rem;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff3b7f, #ff0f5f);
+}
+
+.lp-posuvnik:focus-visible {
+  outline: 2px solid var(--lp-pink-bright);
+  outline-offset: 4px;
+}
+
+/* Přiložený soubor nebo hlasovka */
+.lp-priloha {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: rgb(255 255 255 / 0.04);
+  padding: 0.5rem 0.65rem;
+}
+
+.lp-ikona-tlacitko {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.55rem;
+  color: rgb(255 255 255 / 0.55);
+  cursor: pointer;
+  transition: background 0.25s, color 0.25s;
+}
+
+.lp-ikona-tlacitko:hover {
+  background: rgb(255 255 255 / 0.08);
+  color: #fff;
+}
+
+/* Nabídka, kterou formulář sám od sebe nadhodí */
+.lp-navrh {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgb(255 20 102 / 0.28);
+  background: rgb(255 20 102 / 0.07);
+  padding: 0.7rem 0.9rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: rgb(255 255 255 / 0.75);
+}
+
+/* Pomocník s textem zprávy */
+.lp-pomocnik {
+  border-radius: 0.9rem;
+  border: 1px dashed rgb(255 255 255 / 0.18);
+  padding: 0.9rem 1rem;
+}
+
+/* Rekapitulace před odesláním */
+.lp-rekap {
+  border-radius: 1rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: rgb(255 255 255 / 0.035);
+  padding: 1rem 1.1rem;
+}
+
+/* Lišta o obnoveném konceptu */
+.lp-obnoveno {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgb(34 211 238 / 0.28);
+  background: rgb(34 211 238 / 0.08);
+  padding: 0.6rem 0.9rem;
+  font-size: 0.86rem;
+  color: rgb(255 255 255 / 0.8);
+}
+
+.lp-krok {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.5);
+}
+
+.lp-zpet {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0 0.9rem 0 0.5rem;
+  border-radius: 999px;
+  color: rgb(255 255 255 / 0.7);
+  font: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: color 0.25s, background 0.25s;
+}
+
+.lp-zpet:hover {
+  background: rgb(255 255 255 / 0.06);
+  color: #fff;
+}
+
+/* Past na roboty: pro člověka neviditelná, ale v DOM je a robot ji vyplní. */
+.lp-past {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* Konfety po odeslání */
+.lp-konfety {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.lp-konfety span {
+  position: absolute;
+  top: -8%;
+  width: 0.45rem;
+  height: 0.9rem;
+  border-radius: 1px;
+  opacity: 0;
+  animation-name: lp-konfeta;
+  animation-timing-function: cubic-bezier(0.3, 0.6, 0.5, 1);
+  animation-fill-mode: forwards;
+}
+
+@keyframes lp-konfeta {
+  0% {
+    opacity: 0;
+    transform: translateY(0) rotate(0deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(42rem) rotate(540deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-konfety {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Pracovní zátiší na kontaktní stránce
+   Fotka má vlastní tmavé pozadí i desku stolu. Aby neseděla ve stránce jako
+   nalepený obdélník, okraje se rozplývají do pozadí.
+   --------------------------------------------------------------------------- */
+.lp-zatisi {
+  /* Dvě věci zároveň: ztlumit, aby fotka nepřekřičela text, a utopit okraje.
+     Úzký spád nestačil — pozadí fotky je o chlup světlejší než stránka, takže
+     i po deseti procentech byl pořád vidět obdélník. Spády proto sahají skoro
+     do třetiny a kulatý výřez přes ně srazí ještě rohy. */
+  opacity: 0.78;
+  filter: brightness(0.88) contrast(1.04) saturate(0.92);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 24%, #000 80%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 20%, #000 78%, transparent 100%),
+    radial-gradient(125% 125% at 55% 60%, #000 45%, transparent 92%);
+  mask-image: linear-gradient(to right, transparent 0%, #000 24%, #000 80%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 20%, #000 78%, transparent 100%),
+    radial-gradient(125% 125% at 55% 60%, #000 45%, transparent 92%);
+  -webkit-mask-composite: source-in, source-in;
+  mask-composite: intersect, intersect;
+}
+
+/* ---------------------------------------------------------------------------
+   Vizitka do telefonu
+   Karta se otáčí: na líci kontakt, na rubu QR kód s týmž vCardem. QR musí
+   zůstat tmavý na bílé — na neonově tmavém podkladu ho část čteček nepřečte.
+   --------------------------------------------------------------------------- */
+.lp-vizitka {
+  perspective: 1400px;
+}
+
+.lp-vizitka-naklon {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-style: preserve-3d;
+}
+
+.lp-vizitka-plocha {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1.62 / 1;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  transition: transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lp-vizitka-plocha.je-otocena {
+  transform: rotateY(180deg);
+}
+
+.lp-vizitka-strana {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  border-radius: 1.1rem;
+  padding: 1.25rem 1.35rem;
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.lp-vizitka-lic {
+  flex-direction: column;
+  align-items: flex-start;
+  border: 1px solid rgb(255 20 102 / 0.32);
+  background: linear-gradient(152deg, rgb(38 14 48 / 0.96) 0%, rgb(18 10 32 / 0.97) 52%, rgb(10 8 22 / 0.98) 100%);
+  box-shadow: 0 26px 70px -34px rgb(255 20 102 / 0.85), inset 0 1px 0 rgb(255 255 255 / 0.07);
+}
+
+/* Růžový nádech v rohu, ať líc nevypadá jako plochý obdélník. */
+.lp-vizitka-lic::after {
+  content: '';
+  position: absolute;
+  right: -30%;
+  bottom: -55%;
+  width: 80%;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgb(255 20 102 / 0.26) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+.lp-vizitka-otocit {
+  position: absolute;
+  top: 1.1rem;
+  right: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.16);
+  padding: 0.3rem 0.6rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgb(255 255 255 / 0.65);
+  transition: border-color 0.3s, color 0.3s;
+}
+
+.lp-vizitka-plocha:hover .lp-vizitka-otocit {
+  border-color: rgb(255 20 102 / 0.55);
+  color: #fff;
+}
+
+.lp-vizitka-rub {
+  align-items: center;
+  gap: 1.1rem;
+  transform: rotateY(180deg);
+  border: 1px solid rgb(255 255 255 / 0.14);
+  background: linear-gradient(150deg, #fdfcfe 0%, #f2eef6 100%);
+  box-shadow: 0 26px 70px -34px rgb(0 0 0 / 0.9);
+}
+
+.lp-qr {
+  height: 100%;
+  width: auto;
+  flex: none;
+  border-radius: 0.5rem;
+}
+
+/* QR se po otočení nakreslí shora dolů — drobnost, které si člověk všimne. */
+@keyframes lp-qr-nabeh {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.lp-qr-nabiha {
+  animation: lp-qr-nabeh 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.3s backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-vizitka-naklon,
+  .lp-vizitka-plocha {
+    transition: none;
+  }
+
+  .lp-qr-nabiha {
+    animation: none;
+  }
+}

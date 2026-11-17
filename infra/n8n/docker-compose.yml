@@ -1,0 +1,49 @@
+# Lokální n8n pro zkoušení workflow z této složky `automations/`.
+#
+# Spuštění:  docker compose -f infra/n8n/docker-compose.yml up -d
+#            → http://localhost:5678
+# Zastavení: docker compose -f infra/n8n/docker-compose.yml down
+#
+# Data zůstávají v pojmenovaném volume `n8n_data`, takže restart nic nesmaže.
+# Složka automations/ je připojená jen pro čtení — workflow se dají importovat
+# přímo z /automations uvnitř kontejneru.
+
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: abl-n8n
+    restart: unless-stopped
+    ports:
+      - '5678:5678'
+    environment:
+      # --- přihlášení ---
+      # Při prvním spuštění si n8n nechá vytvořit účet ve webovém rozhraní.
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=Europe/Prague
+      - TZ=Europe/Prague
+
+      # --- chování ---
+      # Zapisuj jen chybné běhy, ať databáze nenaroste při zkoušení.
+      - EXECUTIONS_DATA_SAVE_ON_SUCCESS=none
+      - EXECUTIONS_DATA_SAVE_ON_ERROR=all
+      - EXECUTIONS_DATA_MAX_AGE=168
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_VERSION_NOTIFICATIONS_ENABLED=false
+
+      # --- šifrování credentials ---
+      # Pro kurz stačí tahle hodnota. V reálném nasazení ji nahraď vlastní
+      # a drž ji mimo repozitář (.env, správce tajemství).
+      - N8N_ENCRYPTION_KEY=zmen-me-pred-realnym-nasazenim
+
+      # Povolení Code nodu s externími moduly (pro cvičení v kurzu).
+      - NODE_FUNCTION_ALLOW_BUILTIN=crypto,querystring
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ../../automations:/automations:ro
+
+volumes:
+  n8n_data:
+    name: abl_n8n_data

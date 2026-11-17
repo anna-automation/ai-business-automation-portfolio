@@ -1,0 +1,25 @@
+{
+  "slug": "poptavka-z-formulare-do-crm",
+  "title": {
+    "cs": "Poptávka z formuláře do CRM",
+    "en": "Web form enquiry into the CRM"
+  },
+  "summary": {
+    "cs": "Poptávka z webu se zvaliduje, AI z textu odhadne obor a hodnotu, zapíše se do tabulky a obchodník i zákazník dostanou zprávu.",
+    "en": "A web enquiry is validated, AI estimates field and value, a row is written to the sheet, and both sales and the customer get a message."
+  },
+  "pillar": "n8n",
+  "difficulty": "beginner",
+  "icon": "Users",
+  "tone": "violet",
+  "tools": ["n8n", "Webhook", "Claude API", "Google Sheets", "Slack"],
+  "saves": {
+    "amount": 20,
+    "unit": { "cs": "min / poptávka", "en": "min / enquiry" }
+  },
+  "savesPerMonth": 8,
+  "demo": "crm",
+  "audiences": ["realestate", "services", "eshop", "office"],
+  "tags": ["formular", "crm", "leady"],
+  "status": "ready"
+}

@@ -1,0 +1,25 @@
+{
+  "slug": "trideni-prichozich-emailu",
+  "title": {
+    "cs": "Třídění příchozích e-mailů",
+    "en": "Incoming e-mail triage"
+  },
+  "summary": {
+    "cs": "Nepřečtené e-maily se roztřídí do pěti kategorií, dostanou štítek a prioritu a u rutinních typů vznikne návrh odpovědi.",
+    "en": "Unread e-mail is sorted into five categories, labelled and prioritised; routine types get a draft reply for a human to send."
+  },
+  "pillar": "n8n",
+  "difficulty": "beginner",
+  "icon": "MailCheck",
+  "tone": "accent",
+  "tools": ["n8n", "Gmail", "Claude API", "Google Sheets"],
+  "saves": {
+    "amount": 90,
+    "unit": { "cs": "min / den", "en": "min / day" }
+  },
+  "savesPerMonth": 30,
+  "demo": "inbox",
+  "audiences": ["office", "realestate", "eshop", "accounting"],
+  "tags": ["email", "ai", "triage"],
+  "status": "ready"
+}

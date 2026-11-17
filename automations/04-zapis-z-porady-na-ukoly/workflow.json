@@ -1,0 +1,322 @@
+{
+  "name": "Zápis z porady na úkoly",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "porada-vstup",
+        "responseMode": "onReceived",
+        "responseData": "Přijato. Zapisovatel dostane seznam úkolů ke schválení e-mailem.",
+        "options": {
+          "binaryPropertyName": "nahravka"
+        }
+      },
+      "id": "a1b2c3d4-0004-4000-8000-000000000401",
+      "name": "Nová porada",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-280, 160],
+      "webhookId": "a1b2c3d4-0004-4000-8000-00000000wh01"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-0004-poznamky",
+              "leftValue": "={{ ($json.body?.poznamky || '').length }}",
+              "rightValue": 20,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0004-4000-8000-000000000402",
+      "name": "Přišly textové poznámky?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-60, 160]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.prepis-reci.example/v1/transcribe",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "nahravka"
+            },
+            {
+              "name": "language",
+              "value": "cs"
+            },
+            {
+              "name": "response_format",
+              "value": "json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "a1b2c3d4-0004-4000-8000-000000000403",
+      "name": "Přepis nahrávky",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [160, 320],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PLACEHOLDER",
+          "name": "Přepis řeči — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-opus-5",
+          "cachedResultName": "Claude Opus 5"
+        },
+        "options": {
+          "maxTokensToSample": 2500
+        }
+      },
+      "id": "a1b2c3d4-0004-4000-8000-000000000404",
+      "name": "Jazykový model Claude",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [300, 580],
+      "credentials": {
+        "anthropicApi": {
+          "id": "PLACEHOLDER",
+          "name": "Anthropic — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.text || $json.body?.poznamky || '' }}",
+        "schemaType": "manual",
+        "inputSchema": "{\"type\":\"object\",\"properties\":{\"shrnuti\":{\"type\":\"string\"},\"ukoly\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"zadani\":{\"type\":\"string\"},\"vlastnik\":{\"type\":\"string\"},\"termin\":{\"type\":\"string\"},\"terminZmineny\":{\"type\":\"boolean\"}},\"required\":[\"zadani\",\"vlastnik\",\"termin\",\"terminZmineny\"]}}},\"required\":[\"shrnuti\",\"ukoly\"]}",
+        "options": {
+          "systemPromptTemplate": "Dostaneš přepis nebo poznámky z české firemní porady. Vrať shrnutí a seznam úkolů podle schématu. Odpovídej česky.\n\nSHRNUTI: pět až osm odrážek, každá jedna věta, o čem se rozhodlo. Shrnuj rozhodnutí, ne průběh diskuse. Nepiš, kdo co navrhl a kdo byl proti — zápis má sloužit k práci, ne k dokládání, kdo co řekl. Vynech témata, která se otevřela a neuzavřela, pokud z nich nevznikl úkol.\n\nUKOLY: pole úkolů. Úkol je něco, co má někdo udělat. Nezaměňuj ho s rozhodnutím ani s informací. Když z porady nevyplývá žádný úkol, vrať prázdné pole — to je platná odpověď.\n\nU každého úkolu:\n- ZADANI: jedna věta v infinitivu nebo rozkazu, co se má udělat. Konkrétně, ne obecně. Místo zlepšit komunikaci napiš poslat klientovi aktualizovaný harmonogram.\n- VLASTNIK: jméno tak, jak padlo v zápisu. Když se nikdo nepřihlásil nebo se řeklo jen někdo by měl, vrať prázdný řetězec. Prázdná hodnota je správná odpověď — nepřiřazuj úkol tomu, kdo poradu vedl, ani tomu, kdo mluvil nejvíc.\n- TERMIN: datum ve formátu YYYY-MM-DD, pokud v zápisu opravdu je. Relativní vyjádření přepočítej k datu porady: do pátku, příští týden, do konce měsíce.\n- TERMINZMINENY: true pouze tehdy, když v zápisu termín nebo lhůta skutečně padly. Když tam žádný časový údaj nebyl, vrať false a TERMIN nech prázdný.\n\nTOHLE JE NEJDŮLEŽITĚJŠÍ PRAVIDLO: nikdy nevymýšlej termín, který nikdo nevyslovil. Co nejdřív, brzy, ať to neleží — to nejsou termíny, u těch vrať TERMINZMINENY false. Vymyšlený termín vytvoří závazek, o kterém ten, kdo ho má splnit, nic neví. Prázdný termín je vždy lepší než odhadnutý.\n\nStejně tak nevymýšlej jméno. Když si u přepisu nejsi jistý, jak jméno znělo, vrať to, co je v textu, i když je zkomolené — párování na seznam účastníků se dělá až po tobě."
+        }
+      },
+      "id": "a1b2c3d4-0004-4000-8000-000000000405",
+      "name": "Shrnutí a úkoly",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.1,
+      "position": [380, 160]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Spáruje úkoly s účastníky, označí nejisté vlastníky a zahodí nepodložené termíny.\nconst vysledek = $('Shrnutí a úkoly').first().json.output ?? {};\nconst vstup = $('Nová porada').first().json.body ?? {};\nconst ucastnici = Array.isArray(vstup.ucastnici) ? vstup.ucastnici : [];\n\n// Porovnáváme bez diakritiky a bez velkých písmen, aby se jana novakova\n// spárovala s Jana Nováková.\nconst norm = (s) => String(s ?? '')\n  .toLowerCase()\n  .normalize('NFD')\n  .replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nfunction najdiUcastnika(jmeno) {\n  const hledane = norm(jmeno);\n  if (!hledane) {\n    return { jmeno: '', email: '', jiste: false, poznamka: 'u ukolu neni uveden nikdo' };\n  }\n\n  // 1. Přesná shoda celého jména.\n  const presne = ucastnici.filter((u) => norm(u.jmeno) === hledane);\n  if (presne.length === 1) {\n    return { jmeno: presne[0].jmeno, email: presne[0].email, jiste: true, poznamka: '' };\n  }\n\n  // 2. Shoda na jednu část jména (krestni nebo prijmeni) — jen pokud je jediná.\n  const castecne = ucastnici.filter((u) => norm(u.jmeno).split(' ').includes(hledane));\n  if (castecne.length === 1) {\n    return { jmeno: castecne[0].jmeno, email: castecne[0].email, jiste: true, poznamka: '' };\n  }\n  if (castecne.length > 1) {\n    return {\n      jmeno: String(jmeno),\n      email: '',\n      jiste: false,\n      poznamka: 'podobnych jmen je ' + castecne.length + ', prirazeni musi potvrdit zapisovatel'\n    };\n  }\n\n  return { jmeno: String(jmeno), email: '', jiste: false, poznamka: 'jmeno neni na seznamu ucastniku' };\n}\n\nconst ukoly = Array.isArray(vysledek.ukoly) ? vysledek.ukoly : [];\n\nreturn ukoly.map((u, i) => {\n  const osoba = najdiUcastnika(u.vlastnik);\n  const poznamky = [];\n  if (!osoba.jiste) poznamky.push(osoba.poznamka);\n\n  // AI občas doplní termín, který nikdo nevyslovil. Bereme jen termíny,\n  // u kterých model potvrdil, že v zápisu opravdu byly.\n  const termin = u.terminZmineny === true ? String(u.termin ?? '') : '';\n  if (!termin && u.termin) {\n    poznamky.push('termin ' + u.termin + ' nebyl v zapisu vysloven, nebyl prevzat');\n  }\n\n  return {\n    json: {\n      poradaId: String(vstup.poradaId ?? $execution.id),\n      poradaNazev: String(vstup.nazev ?? 'Porada'),\n      poradaDatum: String(vstup.datum ?? $now.toISODate()),\n      cislo: i + 1,\n      zadani: String(u.zadani ?? ''),\n      vlastnik: osoba.jmeno,\n      email: osoba.email,\n      termin,\n      jisteVlastnik: osoba.jiste,\n      poznamka: poznamky.filter(Boolean).join('; '),\n      shrnuti: String(vysledek.shrnuti ?? '')\n    }\n  };\n});"
+      },
+      "id": "a1b2c3d4-0004-4000-8000-000000000406",
+      "name": "Kontrola úkolů",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 160]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/pages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"parent\": { \"database_id\": \"YOUR_NOTION_DATABASE_ID\" },\n  \"properties\": {\n    \"Úkol\": { \"title\": [{ \"text\": { \"content\": {{ JSON.stringify($json.zadani) }} } }] },\n    \"Vlastník\": { \"rich_text\": [{ \"text\": { \"content\": {{ JSON.stringify($json.vlastnik) }} } }] },\n    \"E-mail\": { \"email\": {{ $json.email ? JSON.stringify($json.email) : 'null' }} },\n    \"Termín\": { \"date\": {{ $json.termin ? JSON.stringify({ start: $json.termin }) : 'null' }} },\n    \"Stav\": { \"select\": { \"name\": \"Ke schválení\" } },\n    \"Porada\": { \"rich_text\": [{ \"text\": { \"content\": {{ JSON.stringify($json.poradaNazev + ' (' + $json.poradaDatum + ')') }} } }] },\n    \"PoradaId\": { \"rich_text\": [{ \"text\": { \"content\": {{ JSON.stringify($json.poradaId) }} } }] },\n    \"Poznámka\": { \"rich_text\": [{ \"text\": { \"content\": {{ JSON.stringify($json.poznamka) }} } }] }\n  }\n}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0004-4000-8000-000000000407",
+      "name": "Zápis do Notion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [820, 160],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PLACEHOLDER",
+          "name": "Notion — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "vas@email.cz",
+        "toEmail": "={{ $('Nová porada').first().json.body.zapisovatelEmail }}",
+        "subject": "=Ke schválení: úkoly z porady {{ $('Kontrola úkolů').first().json.poradaNazev }}",
+        "emailFormat": "text",
+        "text": "=Dobrý den,\n\nz porady {{ $('Kontrola úkolů').first().json.poradaNazev }} ({{ $('Kontrola úkolů').first().json.poradaDatum }}) vznikl tento návrh. Účastníkům se zatím NIC neposlalo.\n\nSHRNUTÍ\n{{ $('Kontrola úkolů').first().json.shrnuti }}\n\nÚKOLY ({{ $('Kontrola úkolů').all().length }})\n{{ $('Kontrola úkolů').all().map(i => i.json.cislo + '. ' + i.json.zadani + '\\n   vlastník: ' + (i.json.vlastnik || 'NEURČEN') + '\\n   termín: ' + (i.json.termin || 'neurčen') + (i.json.poznamka ? '\\n   POZOR: ' + i.json.poznamka : '')).join('\\n\\n') }}\n\nPOZNÁMKA K TERMÍNŮM\nPřevzaly se jen termíny, které na poradě někdo opravdu vyslovil. Kde je termín neurčen, doplňte ho v Notion ručně — prázdný termín je lepší než odhadnutý.\n\nÚKOLY BEZ VLASTNÍKA\nÚkol s vlastníkem NEURČEN se nikomu nerozešle. Přiřaďte ho v Notion, nebo ho zrušte.\n\nCO DĚLAT\n1. Projděte a opravte úkoly v Notion (databáze Úkoly z porad, filtr PoradaId = {{ $('Kontrola úkolů').first().json.poradaId }}).\n2. Teprve pak klikněte na odkaz níž. Tím se každému účastníkovi odešle mail jen s jeho úkoly.\n\nhttps://vase-n8n.example/webhook/porada-schvaleno?porada={{ encodeURIComponent($('Kontrola úkolů').first().json.poradaId) }}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0004-4000-8000-000000000408",
+      "name": "Mail zapisovateli ke schválení",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1040, 160],
+      "executeOnce": true,
+      "credentials": {
+        "smtp": {
+          "id": "PLACEHOLDER",
+          "name": "SMTP — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "porada-schvaleno",
+        "responseMode": "onReceived",
+        "responseData": "Schváleno. Úkoly se rozesílají účastníkům.",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0004-4000-8000-000000000409",
+      "name": "Schválení zapisovatelem",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-280, 820],
+      "webhookId": "a1b2c3d4-0004-4000-8000-00000000wh02"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/databases/YOUR_NOTION_DATABASE_ID/query",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filter\": {\n    \"property\": \"PoradaId\",\n    \"rich_text\": { \"equals\": {{ JSON.stringify($json.query?.porada || '') }} }\n  },\n  \"page_size\": 100\n}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0004-4000-8000-000000000410",
+      "name": "Načíst úkoly z Notion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-60, 820],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PLACEHOLDER",
+          "name": "Notion — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Seskupí úkoly z Notion podle vlastníka. Každý dostane jen svoje.\nconst stranky = $input.first().json.results ?? [];\n\n// Z Notion vlastnosti vytáhne čistý text podle jejího typu.\nconst text = (prop) => {\n  if (!prop) return '';\n  if (prop.type === 'title') return (prop.title ?? []).map((t) => t.plain_text).join('');\n  if (prop.type === 'rich_text') return (prop.rich_text ?? []).map((t) => t.plain_text).join('');\n  if (prop.type === 'email') return prop.email ?? '';\n  if (prop.type === 'date') return prop.date?.start ?? '';\n  if (prop.type === 'select') return prop.select?.name ?? '';\n  return '';\n};\n\nconst podleEmailu = {};\n\nfor (const stranka of stranky) {\n  const p = stranka.properties ?? {};\n  const email = text(p['E-mail']);\n  const stav = text(p['Stav']);\n\n  // Úkol bez jasného vlastníka se nikomu neposílá. Zůstane v Notion\n  // a zapisovatel ho uvidí ve svém mailu.\n  if (!email) continue;\n  if (stav === 'Odesláno') continue;\n\n  if (!podleEmailu[email]) {\n    podleEmailu[email] = {\n      email,\n      jmeno: text(p['Vlastník']),\n      porada: text(p['Porada']),\n      radky: []\n    };\n  }\n\n  const termin = text(p['Termín']);\n  podleEmailu[email].radky.push(\n    '- ' + text(p['Úkol']) + (termin ? ' (termín ' + termin + ')' : ' (termín neurčen)')\n  );\n}\n\nreturn Object.values(podleEmailu).map((u) => ({\n  json: {\n    email: u.email,\n    jmeno: u.jmeno,\n    porada: u.porada,\n    pocet: u.radky.length,\n    seznam: u.radky.join('\\n')\n  }\n}));"
+      },
+      "id": "a1b2c3d4-0004-4000-8000-000000000411",
+      "name": "Rozdělit po účastnících",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [160, 820]
+    },
+    {
+      "parameters": {
+        "fromEmail": "vas@email.cz",
+        "toEmail": "={{ $json.email }}",
+        "subject": "=Vaše úkoly z porady {{ $json.porada }}",
+        "emailFormat": "text",
+        "text": "=Dobrý den,\n\nz porady {{ $json.porada }} vám zůstaly tyto úkoly ({{ $json.pocet }}):\n\n{{ $json.seznam }}\n\nSeznam schválil zapisovatel. Kde je termín neurčen, žádný termín na poradě nepadl — pokud ho potřebujete, dohodněte se na něm.\n\nVšechny úkoly z porady jsou v Notion v databázi Úkoly z porad.",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0004-4000-8000-000000000412",
+      "name": "Mail jen s jeho úkoly",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [380, 820],
+      "credentials": {
+        "smtp": {
+          "id": "PLACEHOLDER",
+          "name": "SMTP — doplnit"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Nová porada": {
+      "main": [[{ "node": "Přišly textové poznámky?", "type": "main", "index": 0 }]]
+    },
+    "Přišly textové poznámky?": {
+      "main": [
+        [{ "node": "Shrnutí a úkoly", "type": "main", "index": 0 }],
+        [{ "node": "Přepis nahrávky", "type": "main", "index": 0 }]
+      ]
+    },
+    "Přepis nahrávky": {
+      "main": [[{ "node": "Shrnutí a úkoly", "type": "main", "index": 0 }]]
+    },
+    "Jazykový model Claude": {
+      "ai_languageModel": [
+        [{ "node": "Shrnutí a úkoly", "type": "ai_languageModel", "index": 0 }]
+      ]
+    },
+    "Shrnutí a úkoly": {
+      "main": [[{ "node": "Kontrola úkolů", "type": "main", "index": 0 }]]
+    },
+    "Kontrola úkolů": {
+      "main": [[{ "node": "Zápis do Notion", "type": "main", "index": 0 }]]
+    },
+    "Zápis do Notion": {
+      "main": [[{ "node": "Mail zapisovateli ke schválení", "type": "main", "index": 0 }]]
+    },
+    "Schválení zapisovatelem": {
+      "main": [[{ "node": "Načíst úkoly z Notion", "type": "main", "index": 0 }]]
+    },
+    "Načíst úkoly z Notion": {
+      "main": [[{ "node": "Rozdělit po účastnících", "type": "main", "index": 0 }]]
+    },
+    "Rozdělit po účastnících": {
+      "main": [[{ "node": "Mail jen s jeho úkoly", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 2,
+  "versionId": "demo-0004"
+}

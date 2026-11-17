@@ -1,0 +1,42 @@
+{
+  "slug": "onboarding-noveho-zamestnance",
+  "title": {
+    "cs": "Onboarding nového zaměstnance",
+    "en": "New employee onboarding"
+  },
+  "summary": {
+    "cs": "Podepsaná smlouva spustí nástup: úkoly pro vedoucího a IT, uvítací e-mail, schůzka na první den a připomínka zkušební doby.",
+    "en": "A signed contract starts onboarding: tasks for the manager and IT, a welcome e-mail, a day-one meeting and a probation reminder."
+  },
+  "pillar": "n8n",
+  "difficulty": "intermediate",
+  "icon": "UserPlus",
+  "tone": "violet",
+  "tools": [
+    "n8n",
+    "Google Sheets",
+    "Google Calendar",
+    "Gmail",
+    "Slack"
+  ],
+  "saves": {
+    "amount": 4,
+    "unit": {
+      "cs": "h / nástup",
+      "en": "h / hire"
+    }
+  },
+  "savesPerMonth": 6,
+  "demo": "tasks",
+  "audiences": [
+    "hr",
+    "office",
+    "services"
+  ],
+  "tags": [
+    "onboarding",
+    "hr",
+    "ukoly"
+  ],
+  "status": "ready"
+}

@@ -1,0 +1,41 @@
+{
+  "slug": "rezervace-terminu-s-pripominkou",
+  "title": {
+    "cs": "Rezervace termínu s připomínkou",
+    "en": "Appointment booking with reminder"
+  },
+  "summary": {
+    "cs": "Klient si vybere termín, systém zkontroluje kolizi, zapíše ho do kalendáře a den předem pošle připomínku.",
+    "en": "The client picks a slot, the system checks for collisions, writes the event and sends a reminder a day ahead."
+  },
+  "pillar": "n8n",
+  "difficulty": "beginner",
+  "icon": "CalendarCheck",
+  "tone": "coral",
+  "tools": [
+    "n8n",
+    "Google Calendar",
+    "Gmail",
+    "Slack"
+  ],
+  "saves": {
+    "amount": 40,
+    "unit": {
+      "cs": "min / den",
+      "en": "min / day"
+    }
+  },
+  "savesPerMonth": 13,
+  "demo": "booking",
+  "audiences": [
+    "services",
+    "realestate",
+    "office"
+  ],
+  "tags": [
+    "rezervace",
+    "kalendar",
+    "pripominka"
+  ],
+  "status": "ready"
+}

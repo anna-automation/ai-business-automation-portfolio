@@ -1,0 +1,43 @@
+# závislosti
+node_modules/
+.pnp
+.pnp.js
+
+# build
+dist/
+build/
+.vite/
+*.tsbuildinfo
+
+# logy
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+*.log
+
+# prostředí a tajemství — tohle do repozitáře nikdy nepatří
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+token.json
+
+# n8n lokální data
+infra/n8n/data/
+automations/_export.json
+
+# editory a OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Office dočasné soubory (zadání.docx si otevřený Word zamkne)
+~$*
+*.tmp

@@ -1,0 +1,25 @@
+{
+  "slug": "faktury-z-prilohy-do-tabulky",
+  "title": {
+    "cs": "Faktury z přílohy do tabulky",
+    "en": "Invoices from attachment to spreadsheet"
+  },
+  "summary": {
+    "cs": "Faktura z přílohy se přečte včetně skenu, AI vytěží dodavatele, IČO, VS a částky, zkontroluje se duplicita a součty a vznikne řádek.",
+    "en": "An attached invoice is read, scans included; AI extracts supplier, ID, reference and amounts; duplicates and totals are checked before writing a row."
+  },
+  "pillar": "n8n",
+  "difficulty": "intermediate",
+  "icon": "ScanLine",
+  "tone": "coral",
+  "tools": ["n8n", "Gmail", "OCR", "Claude API", "Google Sheets"],
+  "saves": {
+    "amount": 12,
+    "unit": { "cs": "h / měsíc", "en": "h / month" }
+  },
+  "savesPerMonth": 12,
+  "demo": "documents",
+  "audiences": ["accounting", "office", "eshop"],
+  "tags": ["faktury", "ocr", "ai"],
+  "status": "ready"
+}

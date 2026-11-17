@@ -1,0 +1,394 @@
+{
+  "name": "Generování nabídky z poptávky",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "nova-poptavka",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "c5d4e3f2-0008-4000-8000-000000000001",
+      "name": "Nová poptávka z CRM",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        320
+      ],
+      "webhookId": "c5d4e3f2-0008-4000-8000-0000000000aa"
+    },
+    {
+      "parameters": {
+        "url": "=https://crm.example.com/api/v1/deals/{{ $json.body.deal_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "c5d4e3f2-0008-4000-8000-000000000002",
+      "name": "Detail poptávky",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -20,
+        320
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PLACEHOLDER",
+          "name": "CRM API — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Cenik",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "c5d4e3f2-0008-4000-8000-000000000003",
+      "name": "Ceník",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -20,
+        560
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "PLACEHOLDER",
+          "name": "Google Sheets — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "id": "c5d4e3f2-0008-4000-8000-000000000004",
+      "name": "Spojit vstupy",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        200,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Cenu počítá kód, ne model. Model se k číslům vůbec nedostane.\nconst poptavka = $('Detail poptávky').first().json;\nconst cenik = $('Ceník').all().map((i) => i.json);\n\nconst na2 = (x) => Math.round(x * 100) / 100;\n\nconst polozky = (poptavka.polozky ?? []).map((p) => {\n  const radek = cenik.find((c) => String(c.kod) === String(p.kod));\n  // Neznámá položka je důvod workflow zastavit, ne cenu dohadovat.\n  if (!radek) throw new Error('Položka není v ceníku: ' + p.kod);\n\n  const jednotkova = Number(radek.cena_bez_dph);\n  const mnozstvi = Number(p.mnozstvi);\n  if (!Number.isFinite(jednotkova) || !Number.isFinite(mnozstvi) || mnozstvi <= 0) {\n    throw new Error('Neplatné množství nebo cena u položky ' + p.kod);\n  }\n\n  return {\n    kod: radek.kod,\n    nazev: radek.nazev,\n    jednotka: radek.jednotka,\n    mnozstvi,\n    jednotkova,\n    celkem: na2(jednotkova * mnozstvi),\n  };\n});\n\nif (polozky.length === 0) throw new Error('Poptávka neobsahuje žádné položky.');\n\nconst zaklad = na2(polozky.reduce((s, p) => s + p.celkem, 0));\n\n// Sleva jen z povolených hladin. Nikdy z volného textu poptávky.\nconst hladiny = { zadna: 0, vernostni: 5, partner: 10 };\nconst slevaProcent = hladiny[poptavka.sleva_typ] ?? 0;\n\nconst bezDph = na2(zaklad * (1 - slevaProcent / 100));\nconst dph = na2(bezDph * 0.21);\n\n// Platnost nabídky: 30 dní od vystavení, datum se tiskne do dokumentu.\nconst platnostDo = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);\n\nreturn [{\n  json: {\n    polozky,\n    zaklad,\n    sleva_procent: slevaProcent,\n    cena_bez_dph: bezDph,\n    dph,\n    cena_s_dph: na2(bezDph + dph),\n    mena: 'CZK',\n    platnost_do: platnostDo,\n    rozsah: polozky.length >= 5 ? 'velka' : 'bezna',\n  },\n}];"
+      },
+      "id": "c5d4e3f2-0008-4000-8000-000000000005",
+      "name": "Výpočet ceny",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Jsi asistent obchodníka. Píšeš textové části nabídky. Čísla, ceny, slevy ani termíny nevymýšlej a žádné do textu nepiš — cenovou část vysází dokument sám z vypočítaných hodnot.\n\nZakázka:\n- Zákazník: {{ $('Detail poptávky').first().json.firma }}\n- Oblast: {{ $('Detail poptávky').first().json.oblast }}\n- Co zákazník poptává (jeho vlastní slova): {{ $('Detail poptávky').first().json.popis }}\n- Položky nabídky: {{ $json.polozky.map(p => p.nazev + ' (' + p.mnozstvi + ' ' + p.jednotka + ')').join(', ') }}\n- Rozsah zakázky: {{ $json.rozsah }}\n\nNapiš česky tři části oddělené řádkem \"---\":\n\n1. ÚVOD — dva až tři odstavce. Shrň, co jsme z poptávky pochopili, vlastními slovy. U rozsahu \"velka\" přidej odstavec o postupu po etapách a o tom, jak probíhá komunikace během zakázky. U rozsahu \"bezna\" buď kratší.\n\n2. ROZSAH PLNĚNÍ — odrážky, co je v nabídce zahrnuto. Vycházej jen z položek výše, nic nepřidávej.\n\n3. CO NABÍDKA NEZAHRNUJE — odrážky. Napiš, co je typicky potřeba doplnit a v nabídce to není, aby zákazník nebyl překvapený.\n\nPravidla:\n- Žádné částky, procenta, počty dnů ani data. Když je potřeba se na cenu odkázat, napiš \"podle cenové části nabídky\".\n- Žádná superlativa, žádné \"špičkový\" a \"na klíč\". Věcně a krátce.\n- Nic neslibuj, co nevyplývá z položek — žádné záruky, lhůty ani garance.\n- Pokud je popis poptávky nejasný, napiš do úvodu větu o tom, co je potřeba ještě upřesnit."
+      },
+      "id": "c5d4e3f2-0008-4000-8000-000000000006",
+      "name": "Texty nabídky",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        640,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-sonnet-4-5",
+        "options": {
+          "maxTokensToSample": 1500,
+          "temperature": 0.3
+        }
+      },
+      "id": "c5d4e3f2-0008-4000-8000-000000000007",
+      "name": "Model pro texty",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        640,
+        660
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "PLACEHOLDER",
+          "name": "Claude API — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Číselná řada a verze. Původní nabídka se nikdy nepřepisuje.\nconst detail = $('Detail poptávky').first().json;\nconst cena = $('Výpočet ceny').first().json;\nconst texty = $json.text ?? $json.output ?? '';\n\nconst verze = Number(detail.pocet_nabidek ?? 0) + 1;\nconst rok = new Date().getFullYear();\nconst cislo = 'NAB-' + rok + '-' + String(detail.id).padStart(5, '0') + '-v' + verze;\n\n// Hrubá kontrola, že model nepřinesl vlastní čísla. Když v textu najdeme\n// částku, která není v našem výpočtu, nabídku radši označíme k ruční kontrole.\nconst povolene = new Set([\n  String(cena.zaklad),\n  String(cena.cena_bez_dph),\n  String(cena.dph),\n  String(cena.cena_s_dph),\n  String(cena.sleva_procent),\n]);\nconst cisla = String(texty).match(/\\d+[\\s\\u00a0]?\\d*[,.]?\\d*/g) ?? [];\nconst podezrela = cisla\n  .map((c) => c.replace(/[\\s\\u00a0]/g, '').replace(',', '.'))\n  .filter((c) => Number(c) >= 100 && !povolene.has(c));\n\nreturn [{\n  json: {\n    ...cena,\n    texty,\n    cislo_nabidky: cislo,\n    verze,\n    zakaznik: detail.firma,\n    kontakt_id: detail.kontakt_id,\n    obchodnik_email: detail.obchodnik_email,\n    ke_kontrole: podezrela.length > 0,\n    podezrela_cisla: podezrela,\n  },\n}];"
+      },
+      "id": "c5d4e3f2-0008-4000-8000-000000000008",
+      "name": "Číslo a verze nabídky",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://docs.example.com/api/v1/render",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ sablona: \"nabidka-v3\", format: \"pdf\", nazev: $json.cislo_nabidky + \".pdf\", data: { cislo: $json.cislo_nabidky, verze: $json.verze, zakaznik: $json.zakaznik, platnost_do: $json.platnost_do, texty: $json.texty, polozky: $json.polozky, zaklad: $json.zaklad, sleva_procent: $json.sleva_procent, cena_bez_dph: $json.cena_bez_dph, dph: $json.dph, cena_s_dph: $json.cena_s_dph, mena: $json.mena } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "c5d4e3f2-0008-4000-8000-000000000009",
+      "name": "Dokument ze šablony",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1080,
+        420
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PLACEHOLDER",
+          "name": "Generátor dokumentů — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://crm.example.com/api/v1/contacts/{{ $('Číslo a verze nabídky').first().json.kontakt_id }}/documents",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ nazev: $('Číslo a verze nabídky').first().json.cislo_nabidky, typ: \"nabidka\", stav: \"ke_schvaleni\", verze: $('Číslo a verze nabídky').first().json.verze, platnost_do: $('Číslo a verze nabídky').first().json.platnost_do, cena_s_dph: $('Číslo a verze nabídky').first().json.cena_s_dph, url: $json.url }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "c5d4e3f2-0008-4000-8000-000000000010",
+      "name": "Uložit ke kontaktu",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1300,
+        420
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PLACEHOLDER",
+          "name": "CRM API — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "nabidky@vasefirma.cz",
+        "toEmail": "={{ $('Číslo a verze nabídky').first().json.obchodnik_email }}",
+        "subject": "=Ke kontrole: {{ $('Číslo a verze nabídky').first().json.cislo_nabidky }} — {{ $('Číslo a verze nabídky').first().json.zakaznik }}",
+        "emailFormat": "text",
+        "text": "=Nabídka je připravená ke kontrole. Zákazníkovi NEODEŠLA.\n\nČíslo: {{ $('Číslo a verze nabídky').first().json.cislo_nabidky }} (verze {{ $('Číslo a verze nabídky').first().json.verze }})\nZákazník: {{ $('Číslo a verze nabídky').first().json.zakaznik }}\nCena bez DPH: {{ $('Číslo a verze nabídky').first().json.cena_bez_dph }} {{ $('Číslo a verze nabídky').first().json.mena }}\nSleva: {{ $('Číslo a verze nabídky').first().json.sleva_procent }} %\nCena s DPH: {{ $('Číslo a verze nabídky').first().json.cena_s_dph }} {{ $('Číslo a verze nabídky').first().json.mena }}\nPlatnost do: {{ $('Číslo a verze nabídky').first().json.platnost_do }}\n\nDokument: {{ $json.url ?? 'uložen ke kontaktu v CRM' }}\n\nUpozornění z kontroly textu: {{ $('Číslo a verze nabídky').first().json.ke_kontrole ? 'V textu od modelu jsou čísla, která nejsou z výpočtu: ' + $('Číslo a verze nabídky').first().json.podezrela_cisla.join(', ') + '. Projděte text pozorně.' : 'žádné' }}\n\nPostup: zkontrolujte rozsah a ceník, případně text upravte v dokumentu a nabídku odešlete zákazníkovi ze svého mailu. Workflow ji samo neposílá.",
+        "options": {}
+      },
+      "id": "c5d4e3f2-0008-4000-8000-000000000011",
+      "name": "Ke kontrole obchodníkovi",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1520,
+        420
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "PLACEHOLDER",
+          "name": "SMTP — doplnit"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "c5d4e3f2-0008-4000-8000-000000000012",
+      "name": "Odeslání zákazníkovi — jen po schválení",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1740,
+        420
+      ],
+      "notes": "Záměrně prázdný konec. Nabídku odesílá obchodník ručně, nebo si sem připojte samostatné workflow spouštěné až po schválení v CRM.",
+      "notesInFlow": true
+    }
+  ],
+  "connections": {
+    "Nová poptávka z CRM": {
+      "main": [
+        [
+          {
+            "node": "Detail poptávky",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detail poptávky": {
+      "main": [
+        [
+          {
+            "node": "Spojit vstupy",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ceník",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ceník": {
+      "main": [
+        [
+          {
+            "node": "Spojit vstupy",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Spojit vstupy": {
+      "main": [
+        [
+          {
+            "node": "Výpočet ceny",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Výpočet ceny": {
+      "main": [
+        [
+          {
+            "node": "Texty nabídky",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Model pro texty": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Texty nabídky",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Texty nabídky": {
+      "main": [
+        [
+          {
+            "node": "Číslo a verze nabídky",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Číslo a verze nabídky": {
+      "main": [
+        [
+          {
+            "node": "Dokument ze šablony",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dokument ze šablony": {
+      "main": [
+        [
+          {
+            "node": "Uložit ke kontaktu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Uložit ke kontaktu": {
+      "main": [
+        [
+          {
+            "node": "Ke kontrole obchodníkovi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ke kontrole obchodníkovi": {
+      "main": [
+        [
+          {
+            "node": "Odeslání zákazníkovi — jen po schválení",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "versionId": "demo-0008"
+}

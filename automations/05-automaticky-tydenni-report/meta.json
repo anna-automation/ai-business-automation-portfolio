@@ -1,0 +1,42 @@
+{
+  "slug": "automaticky-tydenni-report",
+  "title": {
+    "cs": "Automatický týdenní report",
+    "en": "Automated weekly report"
+  },
+  "summary": {
+    "cs": "V pondělí ráno leží vedení v mailu čísla za minulý týden, změny proti předchozímu a krátký komentář.",
+    "en": "Monday morning: last week's numbers, the change against the previous week and a short comment."
+  },
+  "pillar": "n8n",
+  "difficulty": "beginner",
+  "icon": "Activity",
+  "tone": "accent",
+  "tools": [
+    "n8n",
+    "Google Sheets",
+    "CRM API",
+    "Claude API",
+    "Slack"
+  ],
+  "saves": {
+    "amount": 3,
+    "unit": {
+      "cs": "h / týden",
+      "en": "h / week"
+    }
+  },
+  "savesPerMonth": 12,
+  "demo": "dashboard",
+  "audiences": [
+    "office",
+    "services",
+    "eshop"
+  ],
+  "tags": [
+    "report",
+    "data",
+    "slack"
+  ],
+  "status": "ready"
+}
