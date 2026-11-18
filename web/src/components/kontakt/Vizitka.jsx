@@ -8,9 +8,13 @@ import { fakturace, site } from '../../data/site.js'
 /**
  * Vizitka, kterou si člověk odnese v telefonu.
  *
- * Dvě cesty k témuž: tlačítko stáhne `.vcf` (otevře se rovnou v kontaktech)
- * a QR kód na rubu karty nese tentýž soubor — na konferenci stačí namířit
- * foťák. QR se počítá z těch samých dat jako vizitka, takže nemůže zestárnout.
+ * Dvě cesty k témuž: tlačítko v rohu karty stáhne `.vcf` (otevře se rovnou
+ * v kontaktech) a QR kód na rubu nese tentýž soubor — na konferenci stačí
+ * namířit foťák. QR se počítá z týchž dat jako vizitka, takže nemůže
+ * zestárnout.
+ *
+ * Ovládání drží na kartě samotné: jeden přepínač u značky QR, jedno stažení
+ * v rohu. Velká růžová tlačítka pod kartou dělala ze sekce poutač.
  */
 
 /** Řádky vCardu nesmí obsahovat holé čárky a středníky — escapují se. */
@@ -18,7 +22,12 @@ const esc = (hodnota) => String(hodnota).replace(/([,;\\])/g, '\\$1')
 
 export function vytvoritVCard() {
   const telefon = site.phone.replace(/\s/g, '')
-  const [psc, ...mesto] = fakturace.mesto.split(' ')
+
+  // „186 00 Praha 8 – Karlín" → PSČ a město zvlášť. České PSČ je dvojice
+  // skupin, proto se nedá dělit jen podle první mezery.
+  const adresa = fakturace.mesto.match(/^(\d{3}\s?\d{2})\s+(.+)$/)
+  const psc = adresa ? adresa[1] : ''
+  const mesto = adresa ? adresa[2] : fakturace.mesto
 
   return [
     'BEGIN:VCARD',
@@ -26,11 +35,10 @@ export function vytvoritVCard() {
     `N:;${esc(site.person)};;;`,
     `FN:${esc(site.person)}`,
     `ORG:${esc(site.name)};${esc(fakturace.nazev)}`,
-    `TITLE:${esc(site.role.cs)}`,
+    'TITLE:Automatizace a AI',
     `TEL;TYPE=CELL:${telefon}`,
     `EMAIL;TYPE=INTERNET,WORK:${site.email}`,
-    `ADR;TYPE=WORK:;;${esc(fakturace.ulice)};${esc(mesto.join(' '))};;${esc(psc)};Česko`,
-    `NOTE:${esc(site.claim.cs)}`,
+    `ADR;TYPE=WORK:;;${esc(fakturace.ulice)};${esc(mesto)};;${esc(psc)};Česko`,
     'END:VCARD',
   ].join('\r\n')
 }
@@ -40,8 +48,13 @@ export function vytvoritVCard() {
  * tvar a karta se při otáčení nezadrhne.
  */
 function qrKresba(text) {
-  qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8']
-  const kod = qrcode(0, 'M')
+  // Knihovna umí ve výchozím stavu jen jednobajtové znaky — s háčky by vyrobila
+  // nesmysl. Bajty si proto spočítáme sami, UTF-8 zvládne každá čtečka.
+  qrcode.stringToBytes = (s) => Array.from(new TextEncoder().encode(s))
+
+  // Úroveň korekce L: na obrazovce se QR neumaže ani neohne, takže stačí ta
+  // nejnižší — a kostky vyjdou větší, což čtečkám svědčí víc než rezerva.
+  const kod = qrcode(0, 'L')
   kod.addData(text, 'Byte')
   kod.make()
 
@@ -88,30 +101,19 @@ export default function Vizitka() {
     const r = plocha.current.getBoundingClientRect()
     const x = (e.clientX - r.left) / r.width - 0.5
     const y = (e.clientY - r.top) / r.height - 0.5
-    setNaklon({ x: -y * 9, y: x * 11 })
+    setNaklon({ x: -y * 8, y: x * 10 })
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      <div
-        className="lp-vizitka"
-        onPointerMove={sledovat}
-        onPointerLeave={() => setNaklon(null)}
-      >
+    <div>
+      <div className="lp-vizitka" onPointerMove={sledovat} onPointerLeave={() => setNaklon(null)}>
         <div
-          ref={plocha}
           style={naklon ? { transform: `rotateX(${naklon.x}deg) rotateY(${naklon.y}deg)` } : undefined}
           className="lp-vizitka-naklon"
         >
-          <button
-            type="button"
-            onClick={() => setOtoceno((o) => !o)}
-            aria-pressed={otoceno}
-            aria-label={otoceno ? 'Otočit vizitku na přední stranu' : 'Otočit vizitku a ukázat QR kód'}
-            className={cn('lp-vizitka-plocha', otoceno && 'je-otocena')}
-          >
-            {/* ── líc ──────────────────────────────────────────────── */}
-            <span className="lp-vizitka-strana lp-vizitka-lic">
+          <div ref={plocha} className={cn('lp-vizitka-plocha', otoceno && 'je-otocena')}>
+            {/* ── líc ────────────────────────────────────────────────── */}
+            <div className="lp-vizitka-strana lp-vizitka-lic">
               <img
                 src="/media/makasamo-logo.png"
                 alt=""
@@ -120,26 +122,29 @@ export default function Vizitka() {
                 className="h-auto w-[8.5rem]"
               />
 
-              <span className="mt-auto block">
-                <span className="block text-[1.45rem] font-bold leading-tight text-white">
-                  {site.person}
-                </span>
-                <span className="mt-1 block text-[0.9rem] text-white/60">Automatizace &amp; AI</span>
-              </span>
+              <div className="mt-auto">
+                <p className="text-[1.45rem] font-bold leading-tight text-white">{site.person}</p>
+                <p className="mt-1 text-[0.88rem] text-[var(--lp-cyan)]">Automatizace &amp; AI</p>
+              </div>
 
-              <span className="mt-4 block space-y-0.5 text-[0.86rem] text-white/70">
-                <span className="block">{site.email}</span>
-                <span className="block">{site.phone}</span>
-              </span>
+              <div className="mt-3.5 space-y-0.5 text-[0.86rem] text-white/70">
+                <p>{site.email}</p>
+                <p>{site.phone}</p>
+              </div>
 
-              <span aria-hidden className="lp-vizitka-otocit">
-                <QrCode size={16} />
+              <button
+                type="button"
+                onClick={() => setOtoceno(true)}
+                className="lp-vizitka-prepinac"
+                aria-label="Ukázat QR kód s kontaktem"
+              >
+                <QrCode size={15} strokeWidth={2} />
                 QR
-              </span>
-            </span>
+              </button>
+            </div>
 
-            {/* ── rub ──────────────────────────────────────────────── */}
-            <span className="lp-vizitka-strana lp-vizitka-rub">
+            {/* ── rub ────────────────────────────────────────────────── */}
+            <div className="lp-vizitka-strana lp-vizitka-rub">
               <svg
                 viewBox={`0 0 ${qr.strana} ${qr.strana}`}
                 role="img"
@@ -151,38 +156,39 @@ export default function Vizitka() {
                 <path d={qr.cesta} fill="#140a1e" />
               </svg>
 
-              <span className="min-w-0 flex-1 text-left">
-                <span className="block text-[0.95rem] font-semibold text-[#17101f]">
-                  Namiřte foťák
-                </span>
-                <span className="mt-1.5 block text-[0.84rem] leading-snug text-[#17101f]/65">
-                  Telefon nabídne uložení kontaktu. Funguje i z cizí obrazovky — třeba když
-                  posíláte doporučení kolegovi.
-                </span>
-                <span className="mt-3 flex items-center gap-1.5 text-[0.8rem] font-medium text-[var(--lp-pink-deep)]">
-                  <Smartphone size={14} />
+              <div className="min-w-0 flex-1">
+                <p className="text-[0.98rem] font-semibold text-[#17101f]">Namiřte foťák</p>
+                <p className="mt-1.5 text-[0.86rem] leading-snug text-[#17101f]/65">
+                  Telefon rovnou nabídne uložení kontaktu. Jde to i z cizí obrazovky.
+                </p>
+                <p className="mt-3 flex items-center gap-1.5 whitespace-nowrap text-[0.8rem] font-medium text-[#7c3aed]">
+                  <Smartphone size={14} className="shrink-0" />
                   {site.name} · {site.person}
-                </span>
-              </span>
-            </span>
-          </button>
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setOtoceno(false)}
+                className="lp-vizitka-prepinac lp-vizitka-prepinac-rub"
+                aria-label="Otočit zpět na vizitku"
+              >
+                <RotateCcw size={15} strokeWidth={2} />
+                Zpět
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <button type="button" onClick={stahnout} className="lp-submit w-auto px-7">
-          {ulozeno ? <Check size={20} strokeWidth={2.6} /> : <Download size={20} strokeWidth={2.2} />}
-          {ulozeno ? 'Staženo' : 'Stáhnout vizitku'}
-        </button>
-
-        <button type="button" onClick={() => setOtoceno((o) => !o)} className="lp-cip">
-          {otoceno ? <RotateCcw size={16} /> : <QrCode size={16} />}
-          {otoceno ? 'Zpět na vizitku' : 'Ukázat QR kód'}
+        {/* Stažení sedí na rohu karty a zůstává nahoře i při otočení. */}
+        <button type="button" onClick={stahnout} className="lp-vizitka-stahnout">
+          {ulozeno ? <Check size={16} strokeWidth={2.6} /> : <Download size={16} strokeWidth={2.1} />}
+          {ulozeno ? 'Uloženo' : 'Vizitka .vcf'}
         </button>
       </div>
 
-      <p className="text-[0.86rem] leading-snug text-white/50">
-        Soubor <code className="text-white/70">.vcf</code> otevře telefon rovnou v kontaktech.
+      <p className="lp-poznamka">
+        <span aria-hidden>*</span> Soubor <code>.vcf</code> otevře telefon rovnou v kontaktech.
         Stejná data nese i QR kód — nic se přitom nikam neodesílá.
       </p>
     </div>

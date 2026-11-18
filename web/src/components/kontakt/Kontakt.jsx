@@ -1,7 +1,7 @@
 import '../landing/landing.css'
 import LandingHeader from '../landing/LandingHeader.jsx'
 import LandingFooter from '../landing/LandingFooter.jsx'
-import ContactBackdrop from './ContactBackdrop.jsx'
+import { Backdrop } from '../landing/parts.jsx'
 import ContactHero from './ContactHero.jsx'
 import ContactAbout from './ContactAbout.jsx'
 import ContactBilling from './ContactBilling.jsx'
@@ -17,7 +17,7 @@ import ContactCta from './ContactCta.jsx'
 export default function Kontakt() {
   return (
     <div className="lp min-h-screen">
-      <ContactBackdrop />
+      <Backdrop />
       <LandingHeader />
       <ContactHero />
       <ContactAbout />

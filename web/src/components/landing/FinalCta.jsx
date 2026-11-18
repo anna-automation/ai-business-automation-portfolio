@@ -58,7 +58,7 @@ export default function FinalCta() {
             <h2 className="relative text-[clamp(1.9rem,4.2vw,3rem)]">
               Pojďme nechat
               <br />
-              rutinu <span className="text-[var(--lp-pink)]">makat samo.</span>
+              rutinu <span className="text-[var(--lp-pink)]">makat samo</span>
             </h2>
 
             <PillButton to="/kontakt" size="lg" className="relative shrink-0">

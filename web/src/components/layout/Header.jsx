@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Languages, Menu, Moon, Search, Sun, Waves, X } from 'lucide-react'
+import { Languages, Menu, Search, Waves, X } from 'lucide-react'
 import { cn } from '../../lib/utils.js'
 import { usePrefs } from '../../lib/prefs.jsx'
 import { useT } from '../../lib/i18n.jsx'
@@ -19,7 +19,7 @@ const NAV = [
 
 export default function Header({ onOpenPalette }) {
   const { t, lang } = useT()
-  const { theme, toggleTheme, toggleLang, motion: motionPref, setMotion, reducedMotion } = usePrefs()
+  const { toggleLang, motion: motionPref, setMotion, reducedMotion } = usePrefs()
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
   const location = useLocation()
@@ -124,14 +124,6 @@ export default function Header({ onOpenPalette }) {
                   <Languages size={15.5} strokeWidth={2} />
                   <span className="font-mono text-[0.72rem] font-semibold uppercase">{lang}</span>
                 </button>
-              </Tooltip>
-
-              <Tooltip content={t('theme.toggle')}>
-                <IconButton
-                  icon={theme === 'dark' ? Sun : Moon}
-                  label={t('theme.toggle')}
-                  onClick={toggleTheme}
-                />
               </Tooltip>
 
               <Button

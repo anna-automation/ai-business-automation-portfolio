@@ -10,20 +10,21 @@ import { useReducedMotion } from '../../lib/prefs.jsx'
  *   <Button to="/ukazky" variant="primary" icon={ArrowRight}>Vyzkoušet</Button>
  */
 
+/* Hlavni akce je tataz ruzova pilulka jako na uvodce - trida `lp-pill` nese
+   gradient, kapitalky i zari, takze web mluvi jednim jazykem. */
 const VARIANTS = {
-  primary:
-    'bg-accent text-accent-ink hover:brightness-105 shadow-[0_1px_0_rgb(255_255_255/0.25)_inset,0_10px_30px_-12px_var(--accent)]',
-  solid: 'bg-text text-bg hover:opacity-90',
-  violet: 'bg-violet text-white hover:brightness-110',
-  outline: 'border border-line-strong bg-transparent text-text hover:bg-surface-2',
-  ghost: 'bg-transparent text-text-soft hover:bg-surface-2 hover:text-text',
-  quiet: 'bg-surface-2 text-text border border-line hover:border-line-strong',
+  primary: 'lp-pill',
+  solid: 'bg-white text-[#0b0a18] hover:opacity-90',
+  violet: 'bg-violet text-[#140a1e] hover:brightness-110',
+  outline: 'border border-white/16 bg-white/[0.03] text-text hover:border-white/30 hover:bg-white/[0.07]',
+  ghost: 'bg-transparent text-text-soft hover:bg-white/[0.06] hover:text-text',
+  quiet: 'bg-white/[0.05] text-text border border-white/10 hover:border-white/22',
 }
 
 const SIZES = {
-  sm: 'h-9 px-3.5 text-[0.82rem] gap-1.5 rounded-xl',
-  md: 'h-11 px-5 text-[0.9rem] gap-2 rounded-xl',
-  lg: 'h-14 px-7 text-[1rem] gap-2.5 rounded-2xl',
+  sm: 'h-9 px-4 text-[0.84rem] gap-1.5 rounded-full',
+  md: 'h-11 px-6 text-[0.92rem] gap-2 rounded-full',
+  lg: 'h-14 px-8 text-[1.02rem] gap-2.5 rounded-full',
 }
 
 const MAGNET_STRENGTH = 0.28

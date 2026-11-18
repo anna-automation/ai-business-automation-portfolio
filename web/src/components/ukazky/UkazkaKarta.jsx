@@ -59,7 +59,8 @@ export default function UkazkaKarta({ ukazka, popis, nazev }) {
 
         <div className="min-w-0">
           <h3 className="text-[1.08rem] font-semibold leading-tight text-white">{nazev}</h3>
-          <p className="mt-1.5 text-[0.92rem] leading-[1.45] text-white/60">{popis}</p>
+          {/* dva řádky drží všechny dlaždice v řadě stejně vysoké */}
+          <p className="mt-1.5 line-clamp-2 text-[0.92rem] leading-[1.45] text-white/60">{popis}</p>
         </div>
       </div>
 

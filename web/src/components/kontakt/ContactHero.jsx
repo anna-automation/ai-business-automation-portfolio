@@ -10,9 +10,9 @@ import PoptavkovyFormular from './PoptavkovyFormular.jsx'
  */
 
 const VYHODY = [
-  { icon: Zap, titulek: 'Rychlá odpověď', popis: 'do 24 h' },
-  { icon: CalendarCheck, titulek: 'Konzultace', popis: 'zdarma' },
-  { icon: ShieldCheck, titulek: 'Bez závazků', popis: 'a prodejního tlaku' },
+  { icon: Zap, titulek: 'Rychlá odpověď', popis: 'do 24 h', barva: 'text-[var(--lp-pink)]' },
+  { icon: CalendarCheck, titulek: 'Konzultace', popis: 'zdarma', barva: 'text-[var(--lp-cyan)]' },
+  { icon: ShieldCheck, titulek: 'Bez závazků', popis: 'a prodejního tlaku', barva: 'text-[#a78bfa]' },
 ]
 
 export default function ContactHero() {
@@ -42,11 +42,9 @@ export default function ContactHero() {
 
             {/* podpis */}
             <div className="mt-12 lg:mt-16">
-              <p className="lp-signature text-[clamp(2.6rem,4vw,3.4rem)] leading-none text-white">
+              <p className="lp-signature text-[clamp(3rem,4.6vw,4rem)] leading-none text-white">
                 Anna
               </p>
-              <span aria-hidden className="mt-1 block h-[2px] w-[7.5rem] bg-[var(--lp-pink)]" />
-              <p className="mt-3 text-[0.98rem] text-white/70">Automatizace &amp; AI</p>
             </div>
 
             {/* tři důvody, proč napsat — drží se v levé polovině, aby se
@@ -61,7 +59,7 @@ export default function ContactHero() {
                     i > 0 && 'border-l border-white/[0.1]'
                   )}
                 >
-                  <v.icon size={26} strokeWidth={1.8} className="text-[var(--lp-pink)]" />
+                  <v.icon size={26} strokeWidth={1.8} className={v.barva} />
                   <p className="mt-1 text-[0.98rem] font-semibold leading-tight text-white">
                     {v.titulek}
                   </p>
@@ -80,16 +78,17 @@ export default function ContactHero() {
             className="pointer-events-none absolute left-[40.5%] top-0 hidden w-[22%] max-w-[22rem] -translate-x-1/2 select-none lg:block"
           >
             {/* růžová záře za postavou */}
-            <span className="absolute left-1/2 top-[40%] block aspect-[3/4] w-[160%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgb(255_20_102/0.55)_0%,rgb(216_0_79/0.26)_44%,transparent_70%)] blur-[52px]" />
+            <span className="absolute left-1/2 top-[40%] block aspect-[3/4] w-[160%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgb(124_58_237/0.42)_0%,rgb(255_20_102/0.2)_46%,transparent_72%)] blur-[56px]" />
 
-            {/* Silueta je vyříznutá už v souboru — žádná maska navíc,
-                fotka zůstává přesně taková, jaká je v předloze. */}
+            {/* Výřez z předlohy i s pozadím — vystřihávat siluetu se neosvědčilo,
+                vlasům i notebooku to ukousávalo okraje. Do stránky se fotka
+                pouští měkkou maskou (.lp-contact-foto). */}
             <img
-              src="/media/anna-kontakt.png"
+              src="/media/anna-kontakt.webp"
               alt=""
-              width={316}
-              height={611}
-              className="relative block w-full"
+              width={604}
+              height={1269}
+              className="lp-contact-foto relative block w-full"
               draggable={false}
             />
           </div>

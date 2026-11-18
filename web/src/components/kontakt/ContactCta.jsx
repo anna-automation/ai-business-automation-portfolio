@@ -38,7 +38,7 @@ export default function ContactCta() {
             <h2 className="text-[clamp(1.5rem,2.6vw,2.05rem)] leading-[1.25]">
               Pojďme společně najít řešení,
               <br className="hidden sm:block" /> které vám{' '}
-              <span className="text-[var(--lp-pink)]">ušetří čas.</span>
+              <span className="text-[var(--lp-pink)]">ušetří čas</span>
             </h2>
 
             <PillButton

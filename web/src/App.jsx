@@ -1,12 +1,13 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import { Route, Routes, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import Header from './components/layout/Header.jsx'
-import Footer from './components/layout/Footer.jsx'
+import './components/landing/landing.css'
+import LandingHeader from './components/landing/LandingHeader.jsx'
+import LandingFooter from './components/landing/LandingFooter.jsx'
+import { Backdrop } from './components/landing/parts.jsx'
 import CookieBar from './components/layout/CookieBar.jsx'
 import CommandPalette from './components/layout/CommandPalette.jsx'
-import { CustomCursor, FloatingCTA, ScrollProgress } from './components/layout/Chrome.jsx'
-import DemoNotice from './components/layout/DemoNotice.jsx'
+import { CustomCursor, ScrollProgress } from './components/layout/Chrome.jsx'
 import { usePrefs } from './lib/prefs.jsx'
 import { posunNaPrvek } from './lib/scroll.js'
 
@@ -97,17 +98,16 @@ export default function App() {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const location = useLocation()
 
-  // Stránky v neonovém světě si nesou vlastní hlavičku i patičku — společný
-  // rám by se s nimi tloukl. Zároveň přebarvují sdílené prvky do růžové.
-  const NEONOVE = ['/', '/kontakt']
-  const landing = NEONOVE.includes(location.pathname)
+  // Celý web běží v jednom světě: tmavé pozadí, neonová hlavička i patička.
+  // Stránky, které si nesou vlastní úvodní blok, jen nedostanou odsazení
+  // shora — hlavičku pod sebou řeší samy ve svém hero.
+  const VLASTNI_HERO = ['/', '/kontakt', '/ukazky']
+  const vlastniHero = VLASTNI_HERO.includes(location.pathname)
+  const uvodka = location.pathname === '/'
 
-  // Příznak řídíme podle routy, ne podle života komponenty: při odchodu
-  // AnimatePresence stránku ještě chvíli drží a příznak by zůstal viset.
   useEffect(() => {
-    if (landing) document.documentElement.dataset.landing = 'on'
-    else delete document.documentElement.dataset.landing
-  }, [landing])
+    document.documentElement.dataset.landing = 'on'
+  }, [])
 
   // Ctrl/Cmd + K otevře vyhledávání odkudkoliv.
   useEffect(() => {
@@ -133,28 +133,30 @@ export default function App() {
       <ScrollProgress />
       <CustomCursor />
       <ScrollManager />
-      {!landing && <Header onOpenPalette={() => setPaletteOpen(true)} />}
-      {!landing && <DemoNotice />}
 
-      <main id="obsah" className={landing ? undefined : 'pt-20'}>
-        <Suspense fallback={<RouteLoader />}>
-          {/* Úvodka jde mimo přechodovou animaci. Nese si vlastní hlavičku, takže
-              po dobu odchodu by se tloukla s tou společnou — a navíc tu
-              AnimatePresence s ní exit nedokončí a další stránka se nevykreslí. */}
-          {landing ? (
-            <AppRoutes location={location} />
-          ) : (
-            <AnimatePresence mode="wait" initial={false}>
-              <PageShell key={location.pathname}>
-                <AppRoutes location={location} />
-              </PageShell>
-            </AnimatePresence>
-          )}
-        </Suspense>
-      </main>
+      <div className="lp relative min-h-screen">
+        <Backdrop />
+        <LandingHeader onOpenPalette={() => setPaletteOpen(true)} />
 
-      {!landing && <Footer />}
-      {!landing && <FloatingCTA />}
+        <main id="obsah" className={vlastniHero ? undefined : 'relative z-10 pt-28 lg:pt-32'}>
+          <Suspense fallback={<RouteLoader />}>
+            {/* Úvodka jde mimo přechodovou animaci — AnimatePresence s ní exit
+                nedokončí a další stránka se pak nevykreslí. */}
+            {uvodka ? (
+              <AppRoutes location={location} />
+            ) : (
+              <AnimatePresence mode="wait" initial={false}>
+                <PageShell key={location.pathname}>
+                  <AppRoutes location={location} />
+                </PageShell>
+              </AnimatePresence>
+            )}
+          </Suspense>
+        </main>
+
+        <LandingFooter />
+      </div>
+
       <CookieBar />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </>
